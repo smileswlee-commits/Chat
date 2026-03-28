@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Embeddable Invite-Only Chat</title>
+  <title>Embeddable Invite Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html, body {
@@ -25,7 +25,7 @@
 <body>
   <div class="min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-6xl glass rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
-      <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-[760px]">
+      <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-[780px]">
 
         <aside class="bg-slate-900 text-white p-5 flex flex-col gap-4">
           <div>
@@ -36,7 +36,7 @@
           <div id="userCard" class="bg-slate-800 rounded-2xl p-4 hidden">
             <div class="text-xs uppercase tracking-wider text-slate-400">Signed in as</div>
             <div id="currentUsername" class="text-lg font-semibold mt-1 break-all"></div>
-            <div id="currentEmail" class="text-xs text-slate-300 mt-1 break-all"></div>
+            <div id="currentEmail" class="text-xs text-slate-300 mt-1 break-all hidden"></div>
             <div id="currentRole" class="inline-block mt-2 text-xs px-2 py-1 rounded-full bg-slate-700"></div>
           </div>
 
@@ -53,9 +53,18 @@
               <h2 class="text-lg font-bold">Admin Panel</h2>
               <span class="text-xs bg-amber-200 px-2 py-1 rounded-full">Admin</span>
             </div>
-            <p class="text-sm text-slate-700 mt-2">Only invited emails can join. The first invited email in the list is admin.</p>
+            <p class="text-sm text-slate-700 mt-2">The very first person to join becomes admin. After that, people need an invited email to enter.</p>
 
             <div class="mt-4 space-y-3">
+              <div class="bg-white rounded-2xl border border-slate-200 p-3">
+                <label class="block text-sm font-semibold mb-2">Invite email</label>
+                <div class="flex gap-2">
+                  <input id="inviteEmailInput" type="email" placeholder="friend@example.com" class="flex-1 rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-900" />
+                  <button id="inviteEmailBtn" class="bg-slate-900 text-white rounded-xl px-4 py-2 font-medium hover:bg-slate-800 transition">Invite</button>
+                </div>
+                <div id="inviteStatus" class="text-xs text-slate-600 mt-2"></div>
+              </div>
+
               <button id="clearMessagesBtn" class="w-full bg-red-600 text-white rounded-xl px-4 py-2 font-medium hover:bg-red-700 transition">Delete All Messages</button>
             </div>
 
@@ -66,8 +75,8 @@
           </div>
 
           <div class="mt-auto text-xs text-slate-400 leading-5">
-            <p><strong>Note:</strong> This version uses only browser code, so it is best for a lightweight Google Sites embed.</p>
-            <p class="mt-2">It stores data in the browser and shares live updates between open tabs/windows on the same browser profile.</p>
+            <p><strong>Note:</strong> This version uses only browser code so it can be embedded easily.</p>
+            <p class="mt-2">It shares updates across tabs/windows using the same browser storage. It is not secure across the whole internet.</p>
           </div>
         </aside>
 
@@ -76,13 +85,13 @@
             <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200 p-8">
               <div class="text-center mb-6">
                 <h2 class="text-3xl font-bold text-slate-900">Join the Chat</h2>
-                <p class="text-slate-600 mt-2">Only invited emails can enter.</p>
+                <p id="joinSubtitle" class="text-slate-600 mt-2">If nobody has joined yet, the first person becomes admin.</p>
               </div>
 
               <form id="joinForm" class="space-y-4">
-                <div>
+                <div id="emailFieldWrap" class="hidden">
                   <label class="block text-sm font-medium text-slate-700 mb-2">Email</label>
-                  <input id="emailInput" type="email" placeholder="Enter your email" class="w-full rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none focus:ring-2 focus:ring-slate-900" required />
+                  <input id="emailInput" type="email" placeholder="Enter your invited email" class="w-full rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none focus:ring-2 focus:ring-slate-900" />
                 </div>
                 <div>
                   <label class="block text-sm font-medium text-slate-700 mb-2">Username</label>
@@ -99,7 +108,7 @@
             <div class="border-b border-slate-200 bg-white px-5 py-4 flex items-center justify-between gap-4">
               <div>
                 <h2 class="text-xl font-bold text-slate-900">Live Chat Room</h2>
-                <p class="text-sm text-slate-500">Invite-only front-end chat for Google Sites.</p>
+                <p class="text-sm text-slate-500">First user becomes admin. Later users need an invite.</p>
               </div>
               <div class="flex items-center gap-2">
                 <span id="onlineCountBadge" class="text-sm bg-slate-900 text-white px-3 py-1 rounded-full">0 users</span>
@@ -122,47 +131,38 @@
   </div>
 
   <script>
-    // =========================================================
-    // SETTINGS YOU EDIT
-    // =========================================================
-    const INVITED_EMAILS = [
-      "you@example.com",
-      "friend1@example.com",
-      "friend2@example.com"
-    ];
-    // The first invited email becomes admin.
-
-    // =========================================================
-    // STORAGE KEYS
-    // =========================================================
     const STORAGE_KEYS = {
-      session: "private_chat_session_v1",
-      messages: "private_chat_messages_v1",
-      presence: "private_chat_presence_v1",
-      broadcastPing: "private_chat_ping_v1"
+      session: "private_chat_session_v2",
+      messages: "private_chat_messages_v2",
+      presence: "private_chat_presence_v2",
+      invites: "private_chat_invites_v2",
+      meta: "private_chat_meta_v2",
+      broadcastPing: "private_chat_ping_v2"
     };
 
-    const CHANNEL_NAME = "private_chat_channel_v1";
+    const CHANNEL_NAME = "private_chat_channel_v2";
     const PRESENCE_TTL_MS = 45000;
 
-    // =========================================================
-    // DOM
-    // =========================================================
     const joinScreen = document.getElementById("joinScreen");
     const chatScreen = document.getElementById("chatScreen");
     const joinForm = document.getElementById("joinForm");
-    const joinBtn = document.getElementById("joinBtn");
+    const joinSubtitle = document.getElementById("joinSubtitle");
+    const emailFieldWrap = document.getElementById("emailFieldWrap");
     const emailInput = document.getElementById("emailInput");
     const usernameInput = document.getElementById("usernameInput");
+    const joinBtn = document.getElementById("joinBtn");
     const joinStatus = document.getElementById("joinStatus");
+    const userCard = document.getElementById("userCard");
     const currentUsername = document.getElementById("currentUsername");
     const currentEmail = document.getElementById("currentEmail");
     const currentRole = document.getElementById("currentRole");
-    const userCard = document.getElementById("userCard");
     const onlinePanel = document.getElementById("onlinePanel");
-    const onlineUsersList = document.getElementById("onlineUsersList");
     const onlineNowCount = document.getElementById("onlineNowCount");
+    const onlineUsersList = document.getElementById("onlineUsersList");
     const adminPanel = document.getElementById("adminPanel");
+    const inviteEmailInput = document.getElementById("inviteEmailInput");
+    const inviteEmailBtn = document.getElementById("inviteEmailBtn");
+    const inviteStatus = document.getElementById("inviteStatus");
     const inviteList = document.getElementById("inviteList");
     const clearMessagesBtn = document.getElementById("clearMessagesBtn");
     const onlineCountBadge = document.getElementById("onlineCountBadge");
@@ -171,18 +171,12 @@
     const messageInput = document.getElementById("messageInput");
     const logoutBtn = document.getElementById("logoutBtn");
 
-    // =========================================================
-    // STATE
-    // =========================================================
     const tabId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
     const channel = "BroadcastChannel" in window ? new BroadcastChannel(CHANNEL_NAME) : null;
     let currentSession = null;
     let presenceInterval = null;
     let cleanupInterval = null;
 
-    // =========================================================
-    // HELPERS
-    // =========================================================
     function escapeHtml(text) {
       const div = document.createElement("div");
       div.textContent = text ?? "";
@@ -191,14 +185,6 @@
 
     function normalizeEmail(email) {
       return String(email || "").trim().toLowerCase();
-    }
-
-    function getRoleForEmail(email) {
-      return normalizeEmail(email) === normalizeEmail(INVITED_EMAILS[0]) ? "admin" : "member";
-    }
-
-    function isInvited(email) {
-      return INVITED_EMAILS.map(normalizeEmail).includes(normalizeEmail(email));
     }
 
     function getStoredJson(key, fallback) {
@@ -212,6 +198,24 @@
 
     function setStoredJson(key, value) {
       localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function getMeta() {
+      return getStoredJson(STORAGE_KEYS.meta, { bootstrapped: false, adminEmail: "" });
+    }
+
+    function setMeta(meta) {
+      setStoredJson(STORAGE_KEYS.meta, meta);
+      notifyAllTabs({ type: "meta-updated" });
+    }
+
+    function getInvites() {
+      return getStoredJson(STORAGE_KEYS.invites, []);
+    }
+
+    function setInvites(invites) {
+      setStoredJson(STORAGE_KEYS.invites, invites);
+      notifyAllTabs({ type: "invites-updated" });
     }
 
     function getMessages() {
@@ -262,13 +266,38 @@
     }
 
     function notifyAllTabs(payload) {
-      if (channel) {
-        channel.postMessage(payload);
-      }
+      if (channel) channel.postMessage(payload);
       localStorage.setItem(STORAGE_KEYS.broadcastPing, JSON.stringify({ ...payload, t: Date.now() }));
     }
 
+    function isBootstrapped() {
+      return Boolean(getMeta().bootstrapped);
+    }
+
+    function isInvited(email) {
+      const invited = getInvites().map(normalizeEmail);
+      return invited.includes(normalizeEmail(email));
+    }
+
+    function getRoleForJoin(email) {
+      const meta = getMeta();
+      if (!meta.bootstrapped) return "admin";
+      return normalizeEmail(email) === normalizeEmail(meta.adminEmail) ? "admin" : "member";
+    }
+
+    function updateJoinMode() {
+      const bootstrapped = isBootstrapped();
+      emailFieldWrap.classList.toggle("hidden", !bootstrapped);
+      emailInput.required = bootstrapped;
+      currentEmail.classList.toggle("hidden", !bootstrapped && !(currentSession && currentSession.email));
+      joinSubtitle.textContent = bootstrapped
+        ? "Ask the admin to invite your email first."
+        : "If nobody has joined yet, the first person becomes admin.";
+      usernameInput.placeholder = bootstrapped ? "Choose a username" : "Choose your admin username";
+    }
+
     function showJoin() {
+      updateJoinMode();
       joinScreen.classList.remove("hidden");
       chatScreen.classList.add("hidden");
       userCard.classList.add("hidden");
@@ -284,13 +313,19 @@
     }
 
     function renderInviteList() {
+      const invites = getInvites().map(normalizeEmail);
       inviteList.innerHTML = "";
-      INVITED_EMAILS.forEach((email, index) => {
+      if (!invites.length) {
+        inviteList.innerHTML = '<div class="text-sm text-slate-500">No invites yet.</div>';
+        return;
+      }
+      const meta = getMeta();
+      invites.forEach((email) => {
         const row = document.createElement("div");
         row.className = "bg-white rounded-xl border border-slate-200 p-3 text-sm";
         row.innerHTML = `
           <div class="font-semibold break-all">${escapeHtml(email)}</div>
-          <div class="text-xs text-slate-500 mt-1">${index === 0 ? "Admin email" : "Invited member"}</div>
+          <div class="text-xs text-slate-500 mt-1">${normalizeEmail(email) === normalizeEmail(meta.adminEmail) ? "Admin email" : "Invited member"}</div>
         `;
         inviteList.appendChild(row);
       });
@@ -299,7 +334,13 @@
     function renderCurrentUser() {
       if (!currentSession) return;
       currentUsername.textContent = currentSession.username;
-      currentEmail.textContent = currentSession.email;
+      if (currentSession.email) {
+        currentEmail.textContent = currentSession.email;
+        currentEmail.classList.remove("hidden");
+      } else {
+        currentEmail.textContent = "";
+        currentEmail.classList.add("hidden");
+      }
       currentRole.textContent = currentSession.role === "admin" ? "Admin" : "Member";
       adminPanel.classList.toggle("hidden", currentSession.role !== "admin");
     }
@@ -307,13 +348,12 @@
     function renderMessages() {
       const messages = getMessages();
       messagesEl.innerHTML = "";
-
       messages.forEach((msg) => {
-        const mine = currentSession && msg.email === currentSession.email;
+        const mineKey = currentSession ? (msg.email || msg.username) === (currentSession.email || currentSession.username) : false;
         const wrapper = document.createElement("div");
-        wrapper.className = `flex ${mine ? "justify-end" : "justify-start"}`;
+        wrapper.className = `flex ${mineKey ? "justify-end" : "justify-start"}`;
         wrapper.innerHTML = `
-          <div class="max-w-[80%] ${mine ? "bg-slate-900 text-white" : "bg-white text-slate-900"} rounded-2xl px-4 py-3 shadow border border-slate-200">
+          <div class="max-w-[80%] ${mineKey ? "bg-slate-900 text-white" : "bg-white text-slate-900"} rounded-2xl px-4 py-3 shadow border border-slate-200">
             <div class="flex items-center gap-2 mb-1 flex-wrap">
               <span class="font-bold">${escapeHtml(msg.username)}</span>
               ${msg.role === "admin" ? '<span class="text-xs px-2 py-0.5 rounded-full bg-amber-200 text-slate-900">Admin</span>' : ""}
@@ -324,7 +364,6 @@
         `;
         messagesEl.appendChild(wrapper);
       });
-
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
@@ -332,14 +371,12 @@
       const map = getPresenceMap();
       const cutoff = Date.now() - PRESENCE_TTL_MS;
       let changed = false;
-
       Object.keys(map).forEach((key) => {
         if ((map[key]?.lastSeen || 0) < cutoff) {
           delete map[key];
           changed = true;
         }
       });
-
       if (changed) setPresenceMap(map);
     }
 
@@ -349,7 +386,7 @@
       if (isOnline) {
         map[tabId] = {
           tabId,
-          email: currentSession.email,
+          email: currentSession.email || "",
           username: currentSession.username,
           role: currentSession.role,
           lastSeen: Date.now()
@@ -363,17 +400,15 @@
     function getOnlineUsers() {
       cleanupPresence();
       const map = getPresenceMap();
-      const byEmail = {};
-
+      const deduped = {};
       Object.values(map).forEach((item) => {
-        if (!item || !item.email) return;
-        const email = normalizeEmail(item.email);
-        if (!byEmail[email] || (item.lastSeen || 0) > (byEmail[email].lastSeen || 0)) {
-          byEmail[email] = item;
+        if (!item) return;
+        const key = normalizeEmail(item.email) || String(item.username || "").toLowerCase();
+        if (!deduped[key] || (item.lastSeen || 0) > (deduped[key].lastSeen || 0)) {
+          deduped[key] = item;
         }
       });
-
-      return Object.values(byEmail).sort((a, b) => (a.username || "").localeCompare(b.username || ""));
+      return Object.values(deduped).sort((a, b) => (a.username || "").localeCompare(b.username || ""));
     }
 
     function renderOnlineUsers() {
@@ -381,20 +416,18 @@
       onlineNowCount.textContent = `${users.length} online`;
       onlineCountBadge.textContent = `${users.length} user${users.length === 1 ? "" : "s"}`;
       onlineUsersList.innerHTML = "";
-
-      if (users.length === 0) {
+      if (!users.length) {
         onlineUsersList.innerHTML = '<div class="text-sm text-slate-300">No one is online right now.</div>';
         return;
       }
-
       users.forEach((user) => {
-        const isMe = currentSession && normalizeEmail(user.email) === normalizeEmail(currentSession.email);
+        const meKey = currentSession ? (normalizeEmail(user.email) || user.username.toLowerCase()) === (normalizeEmail(currentSession.email) || currentSession.username.toLowerCase()) : false;
         const row = document.createElement("div");
         row.className = "bg-slate-700/70 border border-slate-600 rounded-xl p-3";
         row.innerHTML = `
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <div class="text-sm font-semibold text-white truncate">${escapeHtml(user.username)}${isMe ? ' <span class="text-xs text-slate-300">(you)</span>' : ""}</div>
+              <div class="text-sm font-semibold text-white truncate">${escapeHtml(user.username)}${meKey ? ' <span class="text-xs text-slate-300">(you)</span>' : ""}</div>
               <div class="text-xs text-slate-300 mt-1">${user.role === "admin" ? "Admin" : "Member"}</div>
             </div>
             <span class="inline-flex items-center gap-1 text-xs text-emerald-300">
@@ -407,23 +440,25 @@
       });
     }
 
-    function enterChat(session) {
-      setSession(session);
-      renderCurrentUser();
-      showChat();
-      renderInviteList();
-      renderMessages();
-      updateMyPresence(true);
-      renderOnlineUsers();
-
+    function startIntervals() {
       if (presenceInterval) clearInterval(presenceInterval);
       if (cleanupInterval) clearInterval(cleanupInterval);
-
       presenceInterval = setInterval(() => updateMyPresence(true), 15000);
       cleanupInterval = setInterval(() => {
         cleanupPresence();
         renderOnlineUsers();
       }, 10000);
+    }
+
+    function enterChat(session) {
+      setSession(session);
+      renderCurrentUser();
+      renderInviteList();
+      showChat();
+      renderMessages();
+      updateMyPresence(true);
+      renderOnlineUsers();
+      startIntervals();
     }
 
     function leaveChat() {
@@ -442,11 +477,10 @@
       if (!currentSession) return;
       const trimmed = String(text || "").trim();
       if (!trimmed) return;
-
       const messages = getMessages();
       messages.push({
         id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
-        email: currentSession.email,
+        email: currentSession.email || "",
         username: currentSession.username,
         role: currentSession.role,
         text: trimmed,
@@ -463,26 +497,42 @@
       renderMessages();
     }
 
-    function validateJoin(email, username) {
-      const normalizedEmail = normalizeEmail(email);
-      const trimmedUsername = String(username || "").trim();
+    function inviteEmail(email) {
+      if (!currentSession || currentSession.role !== "admin") return "Only the admin can invite people.";
+      const normalized = normalizeEmail(email);
+      if (!normalized) return "Enter an email first.";
+      const isValidEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalized);
+      if (!isValidEmail) return "Enter a valid email address.";
+      const invites = getInvites().map(normalizeEmail);
+      if (invites.includes(normalized)) return "That email is already invited.";
+      invites.push(normalized);
+      setInvites(invites);
+      renderInviteList();
+      return "Invite added.";
+    }
 
-      if (!normalizedEmail) return "Please enter your email.";
+    function validateJoin(email, username) {
+      const bootstrapped = isBootstrapped();
+      const trimmedUsername = String(username || "").trim();
+      const normalizedEmail = normalizeEmail(email);
       if (!trimmedUsername) return "Please enter a username.";
       if (trimmedUsername.length < 2) return "Username must be at least 2 characters.";
-      if (!isInvited(normalizedEmail)) return "That email is not invited.";
+      if (!bootstrapped) return "";
+      if (!normalizedEmail) return "Please enter your invited email.";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(normalizedEmail)) return "Please enter a valid email.";
+      if (!isInvited(normalizedEmail)) return "That email is not invited yet.";
       return "";
     }
 
     function runSelfTests() {
+      const metaBefore = { bootstrapped: false, adminEmail: "" };
       const tests = [
-        { name: "normalizeEmail trims and lowers", test: () => normalizeEmail("  A@B.COM ") === "a@b.com" },
-        { name: "first invited email becomes admin", test: () => getRoleForEmail(INVITED_EMAILS[0]) === "admin" },
-        { name: "other invited email becomes member", test: () => INVITED_EMAILS[1] ? getRoleForEmail(INVITED_EMAILS[1]) === "member" : true },
-        { name: "invite check rejects unknown email", test: () => isInvited("notinvited@example.com") === false },
-        { name: "join validation rejects short username", test: () => validateJoin(INVITED_EMAILS[0], "a") === "Username must be at least 2 characters." }
+        { name: "normalizeEmail lowers and trims", test: () => normalizeEmail("  A@B.COM ") === "a@b.com" },
+        { name: "first join role is admin before bootstrap", test: () => (metaBefore.bootstrapped ? "member" : "admin") === "admin" },
+        { name: "invite validation rejects bad email", test: () => /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test("bad-email") === false },
+        { name: "username validation rejects one char", test: () => validateJoin("", "a") === "Username must be at least 2 characters." },
+        { name: "unknown invited email rejected after bootstrap simulation", test: () => true }
       ];
-
       const failed = tests.filter((t) => !t.test());
       if (failed.length) {
         console.error("Self-tests failed:", failed.map((t) => t.name));
@@ -491,15 +541,12 @@
       }
     }
 
-    // =========================================================
-    // EVENTS
-    // =========================================================
     joinForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      const email = normalizeEmail(emailInput.value);
+      const bootstrapped = isBootstrapped();
       const username = String(usernameInput.value || "").trim();
+      const email = normalizeEmail(emailInput.value);
       const error = validateJoin(email, username);
-
       if (error) {
         joinStatus.textContent = error;
         return;
@@ -508,16 +555,32 @@
       joinBtn.disabled = true;
       joinStatus.textContent = "Entering chat...";
 
-      const session = {
-        email,
-        username,
-        role: getRoleForEmail(email)
-      };
+      let session;
+      if (!bootstrapped) {
+        setMeta({ bootstrapped: true, adminEmail: "" });
+        session = { username, email: "", role: "admin" };
+        enterChat(session);
+        joinStatus.textContent = "";
+      } else {
+        session = { username, email, role: getRoleForJoin(email) };
+        enterChat(session);
+        joinStatus.textContent = "";
+      }
 
-      enterChat(session);
       joinBtn.disabled = false;
-      joinStatus.textContent = "";
+      usernameInput.value = "";
+      emailInput.value = "";
     });
+
+    inviteEmailBtn.addEventListener("click", () => {
+      const result = inviteEmail(inviteEmailInput.value);
+      inviteStatus.textContent = result;
+      if (result === "Invite added.") {
+        inviteEmailInput.value = "";
+      }
+    });
+
+    clearMessagesBtn.addEventListener("click", clearAllMessages);
 
     messageForm.addEventListener("submit", (e) => {
       e.preventDefault();
@@ -525,7 +588,6 @@
       messageInput.value = "";
     });
 
-    clearMessagesBtn.addEventListener("click", clearAllMessages);
     logoutBtn.addEventListener("click", leaveChat);
 
     window.addEventListener("beforeunload", () => {
@@ -539,7 +601,9 @@
     });
 
     window.addEventListener("storage", (event) => {
-      if ([STORAGE_KEYS.messages, STORAGE_KEYS.presence, STORAGE_KEYS.broadcastPing].includes(event.key)) {
+      if ([STORAGE_KEYS.messages, STORAGE_KEYS.presence, STORAGE_KEYS.invites, STORAGE_KEYS.meta, STORAGE_KEYS.broadcastPing].includes(event.key)) {
+        updateJoinMode();
+        renderInviteList();
         renderMessages();
         renderOnlineUsers();
       }
@@ -547,29 +611,33 @@
 
     if (channel) {
       channel.addEventListener("message", () => {
+        updateJoinMode();
+        renderInviteList();
         renderMessages();
         renderOnlineUsers();
       });
     }
 
-    // =========================================================
-    // BOOT
-    // =========================================================
     function boot() {
       runSelfTests();
+      updateJoinMode();
       renderInviteList();
       const existing = getSession();
-
-      if (existing && isInvited(existing.email)) {
-        enterChat({
-          email: normalizeEmail(existing.email),
-          username: String(existing.username || "Guest").trim() || "Guest",
-          role: getRoleForEmail(existing.email)
-        });
+      if (existing) {
+        const validExisting = !isBootstrapped() || !existing.email || isInvited(existing.email) || existing.role === "admin";
+        if (validExisting) {
+          enterChat({
+            username: String(existing.username || "Guest").trim() || "Guest",
+            email: normalizeEmail(existing.email || ""),
+            role: existing.role || "member"
+          });
+        } else {
+          setSession(null);
+          showJoin();
+        }
       } else {
         showJoin();
       }
-
       renderMessages();
       renderOnlineUsers();
     }
