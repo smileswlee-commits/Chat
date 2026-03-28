@@ -111,8 +111,9 @@
                 <h2 class="text-xl font-bold text-slate-900">Live Chat Room</h2>
                 <p class="text-sm text-slate-500">First user becomes admin. Later users need an invite.</p>
               </div>
-              <div class="flex items-center gap-2">
+              <div class="flex items-center gap-2 flex-wrap justify-end">
                 <span id="onlineCountBadge" class="text-sm bg-slate-900 text-white px-3 py-1 rounded-full">0 users</span>
+                <button id="fullscreenBtn" class="text-sm bg-white border border-slate-300 rounded-xl px-4 py-2 hover:bg-slate-50">Full Screen</button>
                 <button id="logoutBtn" class="text-sm bg-white border border-slate-300 rounded-xl px-4 py-2 hover:bg-slate-50">Leave</button>
               </div>
             </div>
@@ -171,6 +172,7 @@
     const messagesEl = document.getElementById("messages");
     const messageForm = document.getElementById("messageForm");
     const messageInput = document.getElementById("messageInput");
+    const fullscreenBtn = document.getElementById("fullscreenBtn");
     const logoutBtn = document.getElementById("logoutBtn");
 
     const tabId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
@@ -312,6 +314,7 @@
       chatScreen.classList.remove("hidden");
       userCard.classList.remove("hidden");
       onlinePanel.classList.remove("hidden");
+      updateFullscreenButton();
     }
 
     function renderInviteList() {
@@ -591,10 +594,16 @@
       messageInput.value = "";
     });
 
+    fullscreenBtn.addEventListener("click", toggleFullscreen);
+
+    document.addEventListener("fullscreenchange", updateFullscreenButton);
+
     logoutBtn.addEventListener("click", leaveChat);
 
     window.addEventListener("beforeunload", () => {
-      updateMyPresence(false);
+      // Keep the saved session on refresh so the user stays logged in.
+      // Presence is cleaned up automatically later if the tab is truly closed.
+      notifyAllTabs({ type: "tab-refresh-or-close" });
     });
 
     document.addEventListener("visibilitychange", () => {
@@ -619,6 +628,27 @@
         renderMessages();
         renderOnlineUsers();
       });
+    }
+
+    function updateFullscreenButton() {
+      const isFull = !!document.fullscreenElement;
+      if (fullscreenBtn) {
+        fullscreenBtn.textContent = isFull ? "Exit Full Screen" : "Full Screen";
+      }
+    }
+
+    async function toggleFullscreen() {
+      try {
+        if (!document.fullscreenElement) {
+          await document.documentElement.requestFullscreen();
+        } else {
+          await document.exitFullscreen();
+        }
+      } catch (error) {
+        console.error(error);
+      } finally {
+        updateFullscreenButton();
+      }
     }
 
     function boot() {
