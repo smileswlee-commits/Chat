@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Live Chat with First-User Admin</title>
+  <title>Embeddable Invite-Only Chat</title>
   <script src="https://cdn.tailwindcss.com"></script>
   <style>
     html, body {
@@ -14,35 +14,29 @@
       height: 100%;
     }
     .glass {
-      background: rgba(255, 255, 255, 0.9);
+      background: rgba(255,255,255,0.92);
       backdrop-filter: blur(12px);
     }
-    .scrollbar::-webkit-scrollbar {
-      width: 8px;
-    }
-    .scrollbar::-webkit-scrollbar-thumb {
-      background: #cbd5e1;
-      border-radius: 999px;
-    }
-    .scrollbar::-webkit-scrollbar-track {
-      background: transparent;
-    }
+    .scrollbar::-webkit-scrollbar { width: 8px; }
+    .scrollbar::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 999px; }
+    .scrollbar::-webkit-scrollbar-track { background: transparent; }
   </style>
 </head>
 <body>
-  <div id="app" class="min-h-screen flex items-center justify-center p-4">
+  <div class="min-h-screen flex items-center justify-center p-4">
     <div class="w-full max-w-6xl glass rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
-      <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-[780px]">
+      <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-[760px]">
 
         <aside class="bg-slate-900 text-white p-5 flex flex-col gap-4">
           <div>
-            <h1 class="text-2xl font-bold tracking-tight">Community Chat</h1>
-            <p class="text-sm text-slate-300 mt-1">Firebase-powered online chat</p>
+            <h1 class="text-2xl font-bold tracking-tight">Private Chat</h1>
+            <p class="text-sm text-slate-300 mt-1">Single-file Google Sites version</p>
           </div>
 
           <div id="userCard" class="bg-slate-800 rounded-2xl p-4 hidden">
             <div class="text-xs uppercase tracking-wider text-slate-400">Signed in as</div>
             <div id="currentUsername" class="text-lg font-semibold mt-1 break-all"></div>
+            <div id="currentEmail" class="text-xs text-slate-300 mt-1 break-all"></div>
             <div id="currentRole" class="inline-block mt-2 text-xs px-2 py-1 rounded-full bg-slate-700"></div>
           </div>
 
@@ -59,22 +53,21 @@
               <h2 class="text-lg font-bold">Admin Panel</h2>
               <span class="text-xs bg-amber-200 px-2 py-1 rounded-full">Admin</span>
             </div>
-            <p class="text-sm text-slate-700 mt-2">As the first user, you can manage members and messages.</p>
+            <p class="text-sm text-slate-700 mt-2">Only invited emails can join. The first invited email in the list is admin.</p>
 
             <div class="mt-4 space-y-3">
-              <button id="refreshUsersBtn" class="w-full bg-slate-900 text-white rounded-xl px-4 py-2 font-medium hover:bg-slate-800 transition">Refresh User List</button>
               <button id="clearMessagesBtn" class="w-full bg-red-600 text-white rounded-xl px-4 py-2 font-medium hover:bg-red-700 transition">Delete All Messages</button>
             </div>
 
             <div class="mt-4">
-              <div class="text-sm font-semibold mb-2">Users</div>
-              <div id="userList" class="max-h-72 overflow-y-auto scrollbar space-y-2"></div>
+              <div class="text-sm font-semibold mb-2">Invited Emails</div>
+              <div id="inviteList" class="max-h-72 overflow-y-auto scrollbar space-y-2"></div>
             </div>
           </div>
 
           <div class="mt-auto text-xs text-slate-400 leading-5">
-            <p><strong>Important:</strong> Replace the Firebase config before publishing.</p>
-            <p class="mt-2">For Google Sites, it is usually better to host this file first and then embed the hosted page.</p>
+            <p><strong>Note:</strong> This version uses only browser code, so it is best for a lightweight Google Sites embed.</p>
+            <p class="mt-2">It stores data in the browser and shares live updates between open tabs/windows on the same browser profile.</p>
           </div>
         </aside>
 
@@ -83,30 +76,19 @@
             <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200 p-8">
               <div class="text-center mb-6">
                 <h2 class="text-3xl font-bold text-slate-900">Join the Chat</h2>
-                <p class="text-slate-600 mt-2">Create your username to enter.</p>
+                <p class="text-slate-600 mt-2">Only invited emails can enter.</p>
               </div>
 
               <form id="joinForm" class="space-y-4">
                 <div>
-                  <label class="block text-sm font-medium text-slate-700 mb-2">Username</label>
-                  <input
-                    id="usernameInput"
-                    type="text"
-                    maxlength="20"
-                    placeholder="Enter a username"
-                    class="w-full rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none focus:ring-2 focus:ring-slate-900"
-                    required
-                  />
+                  <label class="block text-sm font-medium text-slate-700 mb-2">Email</label>
+                  <input id="emailInput" type="email" placeholder="Enter your email" class="w-full rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none focus:ring-2 focus:ring-slate-900" required />
                 </div>
-
-                <button
-                  id="joinBtn"
-                  type="submit"
-                  class="w-full rounded-2xl bg-slate-900 text-white py-3 text-base font-semibold hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
-                  disabled
-                >
-                  Connecting...
-                </button>
+                <div>
+                  <label class="block text-sm font-medium text-slate-700 mb-2">Username</label>
+                  <input id="usernameInput" type="text" maxlength="20" placeholder="Choose a username" class="w-full rounded-2xl border border-slate-300 px-4 py-3 text-base outline-none focus:ring-2 focus:ring-slate-900" required />
+                </div>
+                <button id="joinBtn" type="submit" class="w-full rounded-2xl bg-slate-900 text-white py-3 text-base font-semibold hover:bg-slate-800 transition">Enter Chat</button>
               </form>
 
               <div id="joinStatus" class="mt-4 text-sm text-center text-slate-600"></div>
@@ -117,7 +99,7 @@
             <div class="border-b border-slate-200 bg-white px-5 py-4 flex items-center justify-between gap-4">
               <div>
                 <h2 class="text-xl font-bold text-slate-900">Live Chat Room</h2>
-                <p class="text-sm text-slate-500">Everyone sees new messages in real time.</p>
+                <p class="text-sm text-slate-500">Invite-only front-end chat for Google Sites.</p>
               </div>
               <div class="flex items-center gap-2">
                 <span id="onlineCountBadge" class="text-sm bg-slate-900 text-white px-3 py-1 rounded-full">0 users</span>
@@ -129,20 +111,8 @@
 
             <div class="border-t border-slate-200 bg-white p-4">
               <form id="messageForm" class="flex gap-3">
-                <input
-                  id="messageInput"
-                  type="text"
-                  maxlength="500"
-                  placeholder="Type your message..."
-                  class="flex-1 rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-slate-900"
-                  required
-                />
-                <button
-                  type="submit"
-                  class="rounded-2xl bg-slate-900 text-white px-6 py-3 font-semibold hover:bg-slate-800 transition"
-                >
-                  Send
-                </button>
+                <input id="messageInput" type="text" maxlength="500" placeholder="Type your message..." class="flex-1 rounded-2xl border border-slate-300 px-4 py-3 outline-none focus:ring-2 focus:ring-slate-900" required />
+                <button type="submit" class="rounded-2xl bg-slate-900 text-white px-6 py-3 font-semibold hover:bg-slate-800 transition">Send</button>
               </form>
             </div>
           </section>
@@ -151,86 +121,138 @@
     </div>
   </div>
 
-  <script type="module">
-    import { initializeApp } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-app.js";
-    import {
-      getAuth,
-      signInAnonymously,
-      onAuthStateChanged
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-auth.js";
-    import {
-      getFirestore,
-      doc,
-      getDoc,
-      setDoc,
-      updateDoc,
-      serverTimestamp,
-      collection,
-      addDoc,
-      query,
-      orderBy,
-      onSnapshot,
-      getDocs,
-      deleteDoc,
-      runTransaction
-    } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
+  <script>
+    // =========================================================
+    // SETTINGS YOU EDIT
+    // =========================================================
+    const INVITED_EMAILS = [
+      "you@example.com",
+      "friend1@example.com",
+      "friend2@example.com"
+    ];
+    // The first invited email becomes admin.
 
-    const firebaseConfig = {
-      apiKey: "YOUR_API_KEY",
-      authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
-      projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.appspot.com",
-      messagingSenderId: "YOUR_SENDER_ID",
-      appId: "YOUR_APP_ID"
+    // =========================================================
+    // STORAGE KEYS
+    // =========================================================
+    const STORAGE_KEYS = {
+      session: "private_chat_session_v1",
+      messages: "private_chat_messages_v1",
+      presence: "private_chat_presence_v1",
+      broadcastPing: "private_chat_ping_v1"
     };
 
+    const CHANNEL_NAME = "private_chat_channel_v1";
+    const PRESENCE_TTL_MS = 45000;
+
+    // =========================================================
+    // DOM
+    // =========================================================
     const joinScreen = document.getElementById("joinScreen");
     const chatScreen = document.getElementById("chatScreen");
     const joinForm = document.getElementById("joinForm");
     const joinBtn = document.getElementById("joinBtn");
+    const emailInput = document.getElementById("emailInput");
     const usernameInput = document.getElementById("usernameInput");
     const joinStatus = document.getElementById("joinStatus");
     const currentUsername = document.getElementById("currentUsername");
+    const currentEmail = document.getElementById("currentEmail");
     const currentRole = document.getElementById("currentRole");
     const userCard = document.getElementById("userCard");
-    const adminPanel = document.getElementById("adminPanel");
     const onlinePanel = document.getElementById("onlinePanel");
     const onlineUsersList = document.getElementById("onlineUsersList");
     const onlineNowCount = document.getElementById("onlineNowCount");
-    const userList = document.getElementById("userList");
-    const refreshUsersBtn = document.getElementById("refreshUsersBtn");
+    const adminPanel = document.getElementById("adminPanel");
+    const inviteList = document.getElementById("inviteList");
     const clearMessagesBtn = document.getElementById("clearMessagesBtn");
+    const onlineCountBadge = document.getElementById("onlineCountBadge");
     const messagesEl = document.getElementById("messages");
     const messageForm = document.getElementById("messageForm");
     const messageInput = document.getElementById("messageInput");
     const logoutBtn = document.getElementById("logoutBtn");
-    const onlineCountBadge = document.getElementById("onlineCountBadge");
 
-    let app = null;
-    let auth = null;
-    let db = null;
-    let currentUser = null;
-    let currentProfile = null;
-    let unsubMessages = null;
-    let unsubUsers = null;
-    let isJoining = false;
-    let isAppConfigured = false;
-    let resolveAuthReady;
-    const authReadyPromise = new Promise((resolve) => {
-      resolveAuthReady = resolve;
-    });
+    // =========================================================
+    // STATE
+    // =========================================================
+    const tabId = crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random());
+    const channel = "BroadcastChannel" in window ? new BroadcastChannel(CHANNEL_NAME) : null;
+    let currentSession = null;
+    let presenceInterval = null;
+    let cleanupInterval = null;
 
+    // =========================================================
+    // HELPERS
+    // =========================================================
     function escapeHtml(text) {
       const div = document.createElement("div");
       div.textContent = text ?? "";
       return div.innerHTML;
     }
 
-    function timeText(dateValue) {
-      if (!dateValue) return "just now";
-      const d = dateValue.toDate ? dateValue.toDate() : new Date(dateValue);
-      if (Number.isNaN(d.getTime())) return "just now";
-      return d.toLocaleString([], {
+    function normalizeEmail(email) {
+      return String(email || "").trim().toLowerCase();
+    }
+
+    function getRoleForEmail(email) {
+      return normalizeEmail(email) === normalizeEmail(INVITED_EMAILS[0]) ? "admin" : "member";
+    }
+
+    function isInvited(email) {
+      return INVITED_EMAILS.map(normalizeEmail).includes(normalizeEmail(email));
+    }
+
+    function getStoredJson(key, fallback) {
+      try {
+        const raw = localStorage.getItem(key);
+        return raw ? JSON.parse(raw) : fallback;
+      } catch {
+        return fallback;
+      }
+    }
+
+    function setStoredJson(key, value) {
+      localStorage.setItem(key, JSON.stringify(value));
+    }
+
+    function getMessages() {
+      return getStoredJson(STORAGE_KEYS.messages, []);
+    }
+
+    function setMessages(messages) {
+      setStoredJson(STORAGE_KEYS.messages, messages);
+      notifyAllTabs({ type: "messages-updated" });
+    }
+
+    function getPresenceMap() {
+      return getStoredJson(STORAGE_KEYS.presence, {});
+    }
+
+    function setPresenceMap(map) {
+      setStoredJson(STORAGE_KEYS.presence, map);
+      notifyAllTabs({ type: "presence-updated" });
+    }
+
+    function getSession() {
+      return getStoredJson(STORAGE_KEYS.session, null);
+    }
+
+    function setSession(session) {
+      currentSession = session;
+      if (session) {
+        setStoredJson(STORAGE_KEYS.session, session);
+      } else {
+        localStorage.removeItem(STORAGE_KEYS.session);
+      }
+    }
+
+    function nowIso() {
+      return new Date().toISOString();
+    }
+
+    function timeText(value) {
+      const date = new Date(value);
+      if (Number.isNaN(date.getTime())) return "just now";
+      return date.toLocaleString([], {
         year: "numeric",
         month: "short",
         day: "numeric",
@@ -239,14 +261,19 @@
       });
     }
 
-    function isPlaceholderConfig(config) {
-      return Object.values(config).some((value) => typeof value === "string" && value.startsWith("YOUR_"));
+    function notifyAllTabs(payload) {
+      if (channel) {
+        channel.postMessage(payload);
+      }
+      localStorage.setItem(STORAGE_KEYS.broadcastPing, JSON.stringify({ ...payload, t: Date.now() }));
     }
 
-    function setJoinState({ disabled, buttonText, statusText }) {
-      joinBtn.disabled = disabled;
-      joinBtn.textContent = buttonText;
-      joinStatus.textContent = statusText;
+    function showJoin() {
+      joinScreen.classList.remove("hidden");
+      chatScreen.classList.add("hidden");
+      userCard.classList.add("hidden");
+      onlinePanel.classList.add("hidden");
+      adminPanel.classList.add("hidden");
     }
 
     function showChat() {
@@ -256,42 +283,118 @@
       onlinePanel.classList.remove("hidden");
     }
 
-    function showJoin() {
-      chatScreen.classList.add("hidden");
-      joinScreen.classList.remove("hidden");
-      userCard.classList.add("hidden");
-      onlinePanel.classList.add("hidden");
-      adminPanel.classList.add("hidden");
+    function renderInviteList() {
+      inviteList.innerHTML = "";
+      INVITED_EMAILS.forEach((email, index) => {
+        const row = document.createElement("div");
+        row.className = "bg-white rounded-xl border border-slate-200 p-3 text-sm";
+        row.innerHTML = `
+          <div class="font-semibold break-all">${escapeHtml(email)}</div>
+          <div class="text-xs text-slate-500 mt-1">${index === 0 ? "Admin email" : "Invited member"}</div>
+        `;
+        inviteList.appendChild(row);
+      });
     }
 
     function renderCurrentUser() {
-      if (!currentProfile) return;
-      currentUsername.textContent = currentProfile.username || "Unknown";
-      currentRole.textContent = currentProfile.role === "admin" ? "Admin" : "Member";
-      adminPanel.classList.toggle("hidden", currentProfile.role !== "admin");
+      if (!currentSession) return;
+      currentUsername.textContent = currentSession.username;
+      currentEmail.textContent = currentSession.email;
+      currentRole.textContent = currentSession.role === "admin" ? "Admin" : "Member";
+      adminPanel.classList.toggle("hidden", currentSession.role !== "admin");
     }
 
-    function renderOnlineUsers(users) {
-      const onlineUsers = users
-        .filter((u) => u.online)
-        .sort((a, b) => (a.username || "").localeCompare(b.username || ""));
+    function renderMessages() {
+      const messages = getMessages();
+      messagesEl.innerHTML = "";
 
-      onlineNowCount.textContent = `${onlineUsers.length} online`;
+      messages.forEach((msg) => {
+        const mine = currentSession && msg.email === currentSession.email;
+        const wrapper = document.createElement("div");
+        wrapper.className = `flex ${mine ? "justify-end" : "justify-start"}`;
+        wrapper.innerHTML = `
+          <div class="max-w-[80%] ${mine ? "bg-slate-900 text-white" : "bg-white text-slate-900"} rounded-2xl px-4 py-3 shadow border border-slate-200">
+            <div class="flex items-center gap-2 mb-1 flex-wrap">
+              <span class="font-bold">${escapeHtml(msg.username)}</span>
+              ${msg.role === "admin" ? '<span class="text-xs px-2 py-0.5 rounded-full bg-amber-200 text-slate-900">Admin</span>' : ""}
+            </div>
+            <div class="whitespace-pre-wrap break-words text-sm leading-6">${escapeHtml(msg.text)}</div>
+            <div class="text-[11px] mt-2 opacity-70">${timeText(msg.createdAt)}</div>
+          </div>
+        `;
+        messagesEl.appendChild(wrapper);
+      });
+
+      messagesEl.scrollTop = messagesEl.scrollHeight;
+    }
+
+    function cleanupPresence() {
+      const map = getPresenceMap();
+      const cutoff = Date.now() - PRESENCE_TTL_MS;
+      let changed = false;
+
+      Object.keys(map).forEach((key) => {
+        if ((map[key]?.lastSeen || 0) < cutoff) {
+          delete map[key];
+          changed = true;
+        }
+      });
+
+      if (changed) setPresenceMap(map);
+    }
+
+    function updateMyPresence(isOnline = true) {
+      if (!currentSession) return;
+      const map = getPresenceMap();
+      if (isOnline) {
+        map[tabId] = {
+          tabId,
+          email: currentSession.email,
+          username: currentSession.username,
+          role: currentSession.role,
+          lastSeen: Date.now()
+        };
+      } else {
+        delete map[tabId];
+      }
+      setPresenceMap(map);
+    }
+
+    function getOnlineUsers() {
+      cleanupPresence();
+      const map = getPresenceMap();
+      const byEmail = {};
+
+      Object.values(map).forEach((item) => {
+        if (!item || !item.email) return;
+        const email = normalizeEmail(item.email);
+        if (!byEmail[email] || (item.lastSeen || 0) > (byEmail[email].lastSeen || 0)) {
+          byEmail[email] = item;
+        }
+      });
+
+      return Object.values(byEmail).sort((a, b) => (a.username || "").localeCompare(b.username || ""));
+    }
+
+    function renderOnlineUsers() {
+      const users = getOnlineUsers();
+      onlineNowCount.textContent = `${users.length} online`;
+      onlineCountBadge.textContent = `${users.length} user${users.length === 1 ? "" : "s"}`;
       onlineUsersList.innerHTML = "";
 
-      if (onlineUsers.length === 0) {
+      if (users.length === 0) {
         onlineUsersList.innerHTML = '<div class="text-sm text-slate-300">No one is online right now.</div>';
         return;
       }
 
-      onlineUsers.forEach((user) => {
-        const isMe = currentUser && user.id === currentUser.uid;
+      users.forEach((user) => {
+        const isMe = currentSession && normalizeEmail(user.email) === normalizeEmail(currentSession.email);
         const row = document.createElement("div");
         row.className = "bg-slate-700/70 border border-slate-600 rounded-xl p-3";
         row.innerHTML = `
           <div class="flex items-center justify-between gap-3">
             <div class="min-w-0">
-              <div class="text-sm font-semibold text-white truncate">${escapeHtml(user.username || "Unknown")}${isMe ? ' <span class="text-xs text-slate-300">(you)</span>' : ""}</div>
+              <div class="text-sm font-semibold text-white truncate">${escapeHtml(user.username)}${isMe ? ' <span class="text-xs text-slate-300">(you)</span>' : ""}</div>
               <div class="text-xs text-slate-300 mt-1">${user.role === "admin" ? "Admin" : "Member"}</div>
             </div>
             <span class="inline-flex items-center gap-1 text-xs text-emerald-300">
@@ -304,422 +407,171 @@
       });
     }
 
-    function renderMessages(snapshot) {
-      messagesEl.innerHTML = "";
-      snapshot.forEach((docSnap) => {
-        const msg = docSnap.data();
-        const mine = currentUser && msg.uid === currentUser.uid;
-        const isAdmin = msg.role === "admin";
-
-        const wrapper = document.createElement("div");
-        wrapper.className = `flex ${mine ? "justify-end" : "justify-start"}`;
-        wrapper.innerHTML = `
-          <div class="max-w-[80%] ${mine ? "bg-slate-900 text-white" : "bg-white text-slate-900"} rounded-2xl px-4 py-3 shadow border border-slate-200">
-            <div class="flex items-center gap-2 mb-1 flex-wrap">
-              <span class="font-bold">${escapeHtml(msg.username || "Unknown")}</span>
-              ${isAdmin ? '<span class="text-xs px-2 py-0.5 rounded-full bg-amber-200 text-slate-900">Admin</span>' : ""}
-            </div>
-            <div class="whitespace-pre-wrap break-words text-sm leading-6">${escapeHtml(msg.text || "")}</div>
-            <div class="text-[11px] mt-2 opacity-70">${timeText(msg.createdAt)}</div>
-          </div>
-        `;
-        messagesEl.appendChild(wrapper);
-      });
-      messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    async function refreshUserList() {
-      if (!currentProfile || currentProfile.role !== "admin") return;
-      const usersSnap = await getDocs(collection(db, "chatUsers"));
-      userList.innerHTML = "";
-
-      const users = [];
-      usersSnap.forEach((docSnap) => users.push({ id: docSnap.id, ...docSnap.data() }));
-      users.sort((a, b) => (a.username || "").localeCompare(b.username || ""));
-
-      if (users.length === 0) {
-        userList.innerHTML = '<div class="text-sm text-slate-600">No users yet.</div>';
-        return;
-      }
-
-      users.forEach((user) => {
-        const row = document.createElement("div");
-        row.className = "bg-white rounded-xl border border-slate-200 p-3";
-        const isAdmin = user.role === "admin";
-        const isMe = currentUser && user.id === currentUser.uid;
-
-        row.innerHTML = `
-          <div class="flex items-start justify-between gap-3">
-            <div>
-              <div class="font-semibold text-sm break-all">${escapeHtml(user.username || "Unknown")}${isMe ? ' <span class="text-xs text-slate-500">(you)</span>' : ""}</div>
-              <div class="text-xs text-slate-500 mt-1">Role: ${escapeHtml(user.role || "member")}</div>
-            </div>
-            <div class="flex gap-2 flex-wrap justify-end">
-              ${!isAdmin ? `<button data-promote="${user.id}" class="promoteBtn text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg">Make Admin</button>` : ""}
-              ${isAdmin && !isMe ? `<button data-demote="${user.id}" class="demoteBtn text-xs bg-slate-200 text-slate-900 px-3 py-1.5 rounded-lg">Remove Admin</button>` : ""}
-              ${!isMe ? `<button data-delete-user="${user.id}" class="deleteUserBtn text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg">Delete User</button>` : ""}
-            </div>
-          </div>
-        `;
-
-        userList.appendChild(row);
-      });
-
-      document.querySelectorAll(".promoteBtn").forEach((btn) => {
-        btn.onclick = async () => {
-          await updateDoc(doc(db, "chatUsers", btn.dataset.promote), { role: "admin" });
-          await refreshUserList();
-        };
-      });
-
-      document.querySelectorAll(".demoteBtn").forEach((btn) => {
-        btn.onclick = async () => {
-          await updateDoc(doc(db, "chatUsers", btn.dataset.demote), { role: "member" });
-          await refreshUserList();
-        };
-      });
-
-      document.querySelectorAll(".deleteUserBtn").forEach((btn) => {
-        btn.onclick = async () => {
-          const ok = confirm("Delete this user record? This removes them from the chat user list until they rejoin.");
-          if (!ok) return;
-          await deleteDoc(doc(db, "chatUsers", btn.dataset.deleteUser));
-          await refreshUserList();
-        };
-      });
-    }
-
-    async function ensureSignedIn() {
-      if (!isAppConfigured) {
-        throw new Error("Firebase config is still placeholder text. Paste in your real Firebase config first.");
-      }
-      await authReadyPromise;
-      if (!currentUser) {
-        throw new Error("Could not sign in to Firebase. Check Anonymous Auth and your config.");
-      }
-      return currentUser;
-    }
-
-    async function registerUser(username) {
-      await ensureSignedIn();
-
-      const trimmed = username.trim();
-      if (!trimmed) throw new Error("Please enter a username.");
-      if (trimmed.length < 2) throw new Error("Username must be at least 2 characters.");
-
-      const countersRef = doc(db, "chatMeta", "counters");
-      const userRef = doc(db, "chatUsers", currentUser.uid);
-      const existingUsersSnap = await getDocs(collection(db, "chatUsers"));
-      const taken = existingUsersSnap.docs.some((d) => {
-        const data = d.data();
-        return (data.username || "").toLowerCase() === trimmed.toLowerCase() && d.id !== currentUser.uid;
-      });
-      if (taken) throw new Error("That username is already taken. Pick another one.");
-
-      await runTransaction(db, async (transaction) => {
-        const counterSnap = await transaction.get(countersRef);
-        const userSnap = await transaction.get(userRef);
-
-        if (userSnap.exists()) {
-          transaction.update(userRef, {
-            username: trimmed,
-            online: true,
-            lastSeen: serverTimestamp()
-          });
-          return;
-        }
-
-        let role = "member";
-        if (!counterSnap.exists()) {
-          role = "admin";
-          transaction.set(countersRef, {
-            firstAdminUid: currentUser.uid,
-            createdAt: serverTimestamp(),
-            totalJoined: 1
-          });
-        } else {
-          const existing = counterSnap.data();
-          transaction.update(countersRef, {
-            totalJoined: (existing.totalJoined || 0) + 1
-          });
-        }
-
-        transaction.set(userRef, {
-          uid: currentUser.uid,
-          username: trimmed,
-          role,
-          joinedAt: serverTimestamp(),
-          lastSeen: serverTimestamp(),
-          online: true
-        });
-      });
-
-      const profileSnap = await getDoc(userRef);
-      currentProfile = profileSnap.data();
+    function enterChat(session) {
+      setSession(session);
       renderCurrentUser();
       showChat();
-      startLiveListeners();
+      renderInviteList();
+      renderMessages();
+      updateMyPresence(true);
+      renderOnlineUsers();
+
+      if (presenceInterval) clearInterval(presenceInterval);
+      if (cleanupInterval) clearInterval(cleanupInterval);
+
+      presenceInterval = setInterval(() => updateMyPresence(true), 15000);
+      cleanupInterval = setInterval(() => {
+        cleanupPresence();
+        renderOnlineUsers();
+      }, 10000);
     }
 
-    async function loadExistingProfile() {
-      if (!currentUser) return false;
-      const userRef = doc(db, "chatUsers", currentUser.uid);
-      const snap = await getDoc(userRef);
-      if (!snap.exists()) return false;
-
-      currentProfile = snap.data();
-      await updateDoc(userRef, {
-        online: true,
-        lastSeen: serverTimestamp()
-      });
-      renderCurrentUser();
-      showChat();
-      startLiveListeners();
-      return true;
+    function leaveChat() {
+      updateMyPresence(false);
+      if (presenceInterval) clearInterval(presenceInterval);
+      if (cleanupInterval) clearInterval(cleanupInterval);
+      presenceInterval = null;
+      cleanupInterval = null;
+      setSession(null);
+      showJoin();
+      joinStatus.textContent = "You left the chat.";
+      renderOnlineUsers();
     }
 
-    function startLiveListeners() {
-      if (unsubMessages) unsubMessages();
-      if (unsubUsers) unsubUsers();
-
-      const messagesQuery = query(collection(db, "chatMessages"), orderBy("createdAt", "asc"));
-      unsubMessages = onSnapshot(messagesQuery, (snapshot) => {
-        renderMessages(snapshot);
-      });
-
-      unsubUsers = onSnapshot(collection(db, "chatUsers"), (snapshot) => {
-        let onlineCount = 0;
-        const users = [];
-        snapshot.forEach((docSnap) => {
-          const data = docSnap.data();
-          users.push({ id: docSnap.id, ...data });
-          if (data.online) onlineCount += 1;
-          if (currentUser && docSnap.id === currentUser.uid) {
-            currentProfile = data;
-            renderCurrentUser();
-          }
-        });
-        onlineCountBadge.textContent = `${onlineCount} user${onlineCount === 1 ? "" : "s"}`;
-        renderOnlineUsers(users);
-        if (currentProfile?.role === "admin") {
-          refreshUserList().catch(console.error);
-        }
-      });
-    }
-
-    async function sendMessage(text) {
-      if (!currentUser || !currentProfile) return;
-      const trimmed = text.trim();
+    function addMessage(text) {
+      if (!currentSession) return;
+      const trimmed = String(text || "").trim();
       if (!trimmed) return;
 
-      await addDoc(collection(db, "chatMessages"), {
-        uid: currentUser.uid,
-        username: currentProfile.username,
-        role: currentProfile.role,
+      const messages = getMessages();
+      messages.push({
+        id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now() + Math.random()),
+        email: currentSession.email,
+        username: currentSession.username,
+        role: currentSession.role,
         text: trimmed,
-        createdAt: serverTimestamp()
+        createdAt: nowIso()
       });
-
-      await updateDoc(doc(db, "chatUsers", currentUser.uid), {
-        online: true,
-        lastSeen: serverTimestamp()
-      });
+      setMessages(messages);
+      renderMessages();
     }
 
-    async function deleteAllMessages() {
-      if (!currentProfile || currentProfile.role !== "admin") return;
-      const ok = confirm("Delete ALL chat messages?");
-      if (!ok) return;
-
-      const snap = await getDocs(collection(db, "chatMessages"));
-      const deletions = [];
-      snap.forEach((docSnap) => deletions.push(deleteDoc(docSnap.ref)));
-      await Promise.all(deletions);
+    function clearAllMessages() {
+      if (!currentSession || currentSession.role !== "admin") return;
+      if (!confirm("Delete all messages?")) return;
+      setMessages([]);
+      renderMessages();
     }
 
-    async function markOffline() {
-      if (!currentUser || !db) return;
-      const userRef = doc(db, "chatUsers", currentUser.uid);
-      try {
-        const snap = await getDoc(userRef);
-        if (snap.exists()) {
-          await updateDoc(userRef, {
-            online: false,
-            lastSeen: serverTimestamp()
-          });
-        }
-      } catch (e) {
-        console.warn("Could not mark offline", e);
-      }
+    function validateJoin(email, username) {
+      const normalizedEmail = normalizeEmail(email);
+      const trimmedUsername = String(username || "").trim();
+
+      if (!normalizedEmail) return "Please enter your email.";
+      if (!trimmedUsername) return "Please enter a username.";
+      if (trimmedUsername.length < 2) return "Username must be at least 2 characters.";
+      if (!isInvited(normalizedEmail)) return "That email is not invited.";
+      return "";
     }
 
     function runSelfTests() {
       const tests = [
-        {
-          name: "escapeHtml encodes tags",
-          test: () => escapeHtml("<b>x</b>") === "&lt;b&gt;x&lt;/b&gt;"
-        },
-        {
-          name: "placeholder config detection works",
-          test: () => isPlaceholderConfig({ apiKey: "YOUR_API_KEY", appId: "x" }) === true
-        },
-        {
-          name: "real-looking config is not placeholder",
-          test: () => isPlaceholderConfig({ apiKey: "abc", appId: "x" }) === false
-        },
-        {
-          name: "timeText handles missing values",
-          test: () => timeText(null) === "just now"
-        }
+        { name: "normalizeEmail trims and lowers", test: () => normalizeEmail("  A@B.COM ") === "a@b.com" },
+        { name: "first invited email becomes admin", test: () => getRoleForEmail(INVITED_EMAILS[0]) === "admin" },
+        { name: "other invited email becomes member", test: () => INVITED_EMAILS[1] ? getRoleForEmail(INVITED_EMAILS[1]) === "member" : true },
+        { name: "invite check rejects unknown email", test: () => isInvited("notinvited@example.com") === false },
+        { name: "join validation rejects short username", test: () => validateJoin(INVITED_EMAILS[0], "a") === "Username must be at least 2 characters." }
       ];
 
       const failed = tests.filter((t) => !t.test());
-      if (failed.length === 0) {
-        console.log("Self-tests passed:", tests.map((t) => t.name));
-      } else {
+      if (failed.length) {
         console.error("Self-tests failed:", failed.map((t) => t.name));
+      } else {
+        console.log("Self-tests passed:", tests.map((t) => t.name));
       }
     }
 
-    joinForm.addEventListener("submit", async (e) => {
+    // =========================================================
+    // EVENTS
+    // =========================================================
+    joinForm.addEventListener("submit", (e) => {
       e.preventDefault();
-      if (isJoining) return;
-      isJoining = true;
-      setJoinState({ disabled: true, buttonText: "Joining...", statusText: "Joining..." });
+      const email = normalizeEmail(emailInput.value);
+      const username = String(usernameInput.value || "").trim();
+      const error = validateJoin(email, username);
 
-      try {
-        await registerUser(usernameInput.value);
-        setJoinState({ disabled: false, buttonText: "Enter Chat", statusText: "" });
-      } catch (err) {
-        console.error(err);
-        setJoinState({ disabled: false, buttonText: "Enter Chat", statusText: err.message || "Could not join chat." });
-      } finally {
-        isJoining = false;
-      }
-    });
-
-    messageForm.addEventListener("submit", async (e) => {
-      e.preventDefault();
-      const text = messageInput.value;
-      messageInput.value = "";
-      try {
-        await sendMessage(text);
-      } catch (err) {
-        console.error(err);
-        alert("Could not send message.");
-      }
-    });
-
-    refreshUsersBtn.addEventListener("click", async () => {
-      try {
-        await refreshUserList();
-      } catch (err) {
-        console.error(err);
-        alert("Could not refresh users.");
-      }
-    });
-
-    clearMessagesBtn.addEventListener("click", async () => {
-      try {
-        await deleteAllMessages();
-      } catch (err) {
-        console.error(err);
-        alert("Could not delete messages.");
-      }
-    });
-
-    logoutBtn.addEventListener("click", async () => {
-      await markOffline();
-      location.reload();
-    });
-
-    window.addEventListener("beforeunload", () => {
-      navigator.sendBeacon?.("data:,offline");
-    });
-
-    document.addEventListener("visibilitychange", async () => {
-      if (!currentUser || !db) return;
-      const userRef = doc(db, "chatUsers", currentUser.uid);
-      try {
-        await updateDoc(userRef, {
-          online: !document.hidden,
-          lastSeen: serverTimestamp()
-        });
-      } catch (e) {
-        console.warn(e);
-      }
-    });
-
-    async function boot() {
-      runSelfTests();
-
-      if (isPlaceholderConfig(firebaseConfig)) {
-        setJoinState({
-          disabled: true,
-          buttonText: "Setup Needed",
-          statusText: "Paste your real Firebase config into the code first."
-        });
-        showJoin();
+      if (error) {
+        joinStatus.textContent = error;
         return;
       }
 
-      isAppConfigured = true;
-      setJoinState({
-        disabled: true,
-        buttonText: "Connecting...",
-        statusText: "Connecting to Firebase..."
-      });
+      joinBtn.disabled = true;
+      joinStatus.textContent = "Entering chat...";
 
-      app = initializeApp(firebaseConfig);
-      auth = getAuth(app);
-      db = getFirestore(app);
+      const session = {
+        email,
+        username,
+        role: getRoleForEmail(email)
+      };
 
-      onAuthStateChanged(auth, async (user) => {
-        currentUser = user;
-        resolveAuthReady(user);
+      enterChat(session);
+      joinBtn.disabled = false;
+      joinStatus.textContent = "";
+    });
 
-        if (!user) {
-          showJoin();
-          setJoinState({
-            disabled: true,
-            buttonText: "Connecting...",
-            statusText: "Signing you in..."
-          });
-          return;
-        }
+    messageForm.addEventListener("submit", (e) => {
+      e.preventDefault();
+      addMessage(messageInput.value);
+      messageInput.value = "";
+    });
 
-        try {
-          const loaded = await loadExistingProfile();
-          if (!loaded) {
-            showJoin();
-            setJoinState({
-              disabled: false,
-              buttonText: "Enter Chat",
-              statusText: "Connected. Enter a username."
-            });
-          }
-        } catch (err) {
-          console.error(err);
-          showJoin();
-          setJoinState({
-            disabled: false,
-            buttonText: "Enter Chat",
-            statusText: "Connected, but profile loading failed. Check Firestore rules."
-          });
-        }
-      });
+    clearMessagesBtn.addEventListener("click", clearAllMessages);
+    logoutBtn.addEventListener("click", leaveChat);
 
-      try {
-        await signInAnonymously(auth);
-      } catch (err) {
-        console.error("Anonymous auth error:", err);
-        showJoin();
-        setJoinState({
-          disabled: true,
-          buttonText: "Auth Failed",
-          statusText: "Firebase anonymous login failed. Turn on Anonymous Auth and check your config."
-        });
+    window.addEventListener("beforeunload", () => {
+      updateMyPresence(false);
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (!currentSession) return;
+      updateMyPresence(!document.hidden);
+      renderOnlineUsers();
+    });
+
+    window.addEventListener("storage", (event) => {
+      if ([STORAGE_KEYS.messages, STORAGE_KEYS.presence, STORAGE_KEYS.broadcastPing].includes(event.key)) {
+        renderMessages();
+        renderOnlineUsers();
       }
+    });
+
+    if (channel) {
+      channel.addEventListener("message", () => {
+        renderMessages();
+        renderOnlineUsers();
+      });
+    }
+
+    // =========================================================
+    // BOOT
+    // =========================================================
+    function boot() {
+      runSelfTests();
+      renderInviteList();
+      const existing = getSession();
+
+      if (existing && isInvited(existing.email)) {
+        enterChat({
+          email: normalizeEmail(existing.email),
+          username: String(existing.username || "Guest").trim() || "Guest",
+          role: getRoleForEmail(existing.email)
+        });
+      } else {
+        showJoin();
+      }
+
+      renderMessages();
+      renderOnlineUsers();
     }
 
     boot();
