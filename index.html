@@ -14,7 +14,7 @@
       height: 100%;
     }
     .glass {
-      background: rgba(255,255,255,0.9);
+      background: rgba(255, 255, 255, 0.9);
       backdrop-filter: blur(12px);
     }
     .scrollbar::-webkit-scrollbar {
@@ -34,7 +34,6 @@
     <div class="w-full max-w-6xl glass rounded-3xl shadow-2xl overflow-hidden border border-slate-200">
       <div class="grid grid-cols-1 lg:grid-cols-[320px_1fr] min-h-[780px]">
 
-        <!-- Sidebar -->
         <aside class="bg-slate-900 text-white p-5 flex flex-col gap-4">
           <div>
             <h1 class="text-2xl font-bold tracking-tight">Community Chat</h1>
@@ -45,6 +44,14 @@
             <div class="text-xs uppercase tracking-wider text-slate-400">Signed in as</div>
             <div id="currentUsername" class="text-lg font-semibold mt-1 break-all"></div>
             <div id="currentRole" class="inline-block mt-2 text-xs px-2 py-1 rounded-full bg-slate-700"></div>
+          </div>
+
+          <div id="onlinePanel" class="bg-slate-800 rounded-2xl p-4 hidden">
+            <div class="flex items-center justify-between gap-2">
+              <h2 class="text-lg font-bold text-white">Online Now</h2>
+              <span id="onlineNowCount" class="text-xs bg-emerald-500/20 text-emerald-300 px-2 py-1 rounded-full">0 online</span>
+            </div>
+            <div id="onlineUsersList" class="mt-3 max-h-56 overflow-y-auto scrollbar space-y-2"></div>
           </div>
 
           <div id="adminPanel" class="bg-amber-50 text-slate-900 rounded-2xl p-4 hidden">
@@ -66,14 +73,12 @@
           </div>
 
           <div class="mt-auto text-xs text-slate-400 leading-5">
-            <p><strong>Important:</strong> This demo uses Firebase as the backend.</p>
-            <p class="mt-2">Replace the Firebase config in the code before publishing.</p>
+            <p><strong>Important:</strong> Replace the Firebase config before publishing.</p>
+            <p class="mt-2">For Google Sites, it is usually better to host this file first and then embed the hosted page.</p>
           </div>
         </aside>
 
-        <!-- Main -->
         <main class="flex flex-col bg-slate-100">
-          <!-- Join Screen -->
           <section id="joinScreen" class="flex-1 flex items-center justify-center p-6">
             <div class="w-full max-w-md bg-white rounded-3xl shadow-xl border border-slate-200 p-8">
               <div class="text-center mb-6">
@@ -95,10 +100,12 @@
                 </div>
 
                 <button
+                  id="joinBtn"
                   type="submit"
-                  class="w-full rounded-2xl bg-slate-900 text-white py-3 text-base font-semibold hover:bg-slate-800 transition"
+                  class="w-full rounded-2xl bg-slate-900 text-white py-3 text-base font-semibold hover:bg-slate-800 transition disabled:opacity-50 disabled:cursor-not-allowed"
+                  disabled
                 >
-                  Enter Chat
+                  Connecting...
                 </button>
               </form>
 
@@ -106,7 +113,6 @@
             </div>
           </section>
 
-          <!-- Chat Screen -->
           <section id="chatScreen" class="hidden flex-1 flex flex-col min-h-0">
             <div class="border-b border-slate-200 bg-white px-5 py-4 flex items-center justify-between gap-4">
               <div>
@@ -155,8 +161,8 @@
     import {
       getFirestore,
       doc,
-      setDoc,
       getDoc,
+      setDoc,
       updateDoc,
       serverTimestamp,
       collection,
@@ -169,34 +175,28 @@
       runTransaction
     } from "https://www.gstatic.com/firebasejs/10.12.5/firebase-firestore.js";
 
-    // =========================================================
-    // 1) PASTE YOUR FIREBASE CONFIG HERE
-    // =========================================================
     const firebaseConfig = {
       apiKey: "YOUR_API_KEY",
       authDomain: "YOUR_PROJECT_ID.firebaseapp.com",
       projectId: "YOUR_PROJECT_ID",
-      storageBucket: "YOUR_PROJECT_ID.firebasestorage.app",
+      storageBucket: "YOUR_PROJECT_ID.appspot.com",
       messagingSenderId: "YOUR_SENDER_ID",
       appId: "YOUR_APP_ID"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const auth = getAuth(app);
-    const db = getFirestore(app);
-
-    // =========================================================
-    // DOM
-    // =========================================================
     const joinScreen = document.getElementById("joinScreen");
     const chatScreen = document.getElementById("chatScreen");
     const joinForm = document.getElementById("joinForm");
+    const joinBtn = document.getElementById("joinBtn");
     const usernameInput = document.getElementById("usernameInput");
     const joinStatus = document.getElementById("joinStatus");
     const currentUsername = document.getElementById("currentUsername");
     const currentRole = document.getElementById("currentRole");
     const userCard = document.getElementById("userCard");
     const adminPanel = document.getElementById("adminPanel");
+    const onlinePanel = document.getElementById("onlinePanel");
+    const onlineUsersList = document.getElementById("onlineUsersList");
+    const onlineNowCount = document.getElementById("onlineNowCount");
     const userList = document.getElementById("userList");
     const refreshUsersBtn = document.getElementById("refreshUsersBtn");
     const clearMessagesBtn = document.getElementById("clearMessagesBtn");
@@ -206,26 +206,30 @@
     const logoutBtn = document.getElementById("logoutBtn");
     const onlineCountBadge = document.getElementById("onlineCountBadge");
 
-    // =========================================================
-    // State
-    // =========================================================
+    let app = null;
+    let auth = null;
+    let db = null;
     let currentUser = null;
     let currentProfile = null;
     let unsubMessages = null;
     let unsubUsers = null;
+    let isJoining = false;
+    let isAppConfigured = false;
+    let resolveAuthReady;
+    const authReadyPromise = new Promise((resolve) => {
+      resolveAuthReady = resolve;
+    });
 
-    // =========================================================
-    // Helpers
-    // =========================================================
     function escapeHtml(text) {
       const div = document.createElement("div");
-      div.textContent = text;
+      div.textContent = text ?? "";
       return div.innerHTML;
     }
 
     function timeText(dateValue) {
       if (!dateValue) return "just now";
       const d = dateValue.toDate ? dateValue.toDate() : new Date(dateValue);
+      if (Number.isNaN(d.getTime())) return "just now";
       return d.toLocaleString([], {
         year: "numeric",
         month: "short",
@@ -235,28 +239,69 @@
       });
     }
 
+    function isPlaceholderConfig(config) {
+      return Object.values(config).some((value) => typeof value === "string" && value.startsWith("YOUR_"));
+    }
+
+    function setJoinState({ disabled, buttonText, statusText }) {
+      joinBtn.disabled = disabled;
+      joinBtn.textContent = buttonText;
+      joinStatus.textContent = statusText;
+    }
+
     function showChat() {
       joinScreen.classList.add("hidden");
       chatScreen.classList.remove("hidden");
       userCard.classList.remove("hidden");
+      onlinePanel.classList.remove("hidden");
     }
 
     function showJoin() {
       chatScreen.classList.add("hidden");
       joinScreen.classList.remove("hidden");
       userCard.classList.add("hidden");
+      onlinePanel.classList.add("hidden");
       adminPanel.classList.add("hidden");
     }
 
     function renderCurrentUser() {
       if (!currentProfile) return;
-      currentUsername.textContent = currentProfile.username;
+      currentUsername.textContent = currentProfile.username || "Unknown";
       currentRole.textContent = currentProfile.role === "admin" ? "Admin" : "Member";
-      if (currentProfile.role === "admin") {
-        adminPanel.classList.remove("hidden");
-      } else {
-        adminPanel.classList.add("hidden");
+      adminPanel.classList.toggle("hidden", currentProfile.role !== "admin");
+    }
+
+    function renderOnlineUsers(users) {
+      const onlineUsers = users
+        .filter((u) => u.online)
+        .sort((a, b) => (a.username || "").localeCompare(b.username || ""));
+
+      onlineNowCount.textContent = `${onlineUsers.length} online`;
+      onlineUsersList.innerHTML = "";
+
+      if (onlineUsers.length === 0) {
+        onlineUsersList.innerHTML = '<div class="text-sm text-slate-300">No one is online right now.</div>';
+        return;
       }
+
+      onlineUsers.forEach((user) => {
+        const isMe = currentUser && user.id === currentUser.uid;
+        const row = document.createElement("div");
+        row.className = "bg-slate-700/70 border border-slate-600 rounded-xl p-3";
+        row.innerHTML = `
+          <div class="flex items-center justify-between gap-3">
+            <div class="min-w-0">
+              <div class="text-sm font-semibold text-white truncate">${escapeHtml(user.username || "Unknown")}${isMe ? ' <span class="text-xs text-slate-300">(you)</span>' : ""}</div>
+              <div class="text-xs text-slate-300 mt-1">${user.role === "admin" ? "Admin" : "Member"}</div>
+            </div>
+            <span class="inline-flex items-center gap-1 text-xs text-emerald-300">
+              <span class="w-2 h-2 rounded-full bg-emerald-400 inline-block"></span>
+              Online
+            </span>
+          </div>
+        `;
+        onlineUsersList.appendChild(row);
+      });
     }
 
     function renderMessages(snapshot) {
@@ -268,21 +313,18 @@
 
         const wrapper = document.createElement("div");
         wrapper.className = `flex ${mine ? "justify-end" : "justify-start"}`;
-
         wrapper.innerHTML = `
           <div class="max-w-[80%] ${mine ? "bg-slate-900 text-white" : "bg-white text-slate-900"} rounded-2xl px-4 py-3 shadow border border-slate-200">
             <div class="flex items-center gap-2 mb-1 flex-wrap">
               <span class="font-bold">${escapeHtml(msg.username || "Unknown")}</span>
-              ${isAdmin ? '<span class="text-xs px-2 py-0.5 rounded-full bg-amber-200 text-slate-900">Admin</span>' : ''}
+              ${isAdmin ? '<span class="text-xs px-2 py-0.5 rounded-full bg-amber-200 text-slate-900">Admin</span>' : ""}
             </div>
             <div class="whitespace-pre-wrap break-words text-sm leading-6">${escapeHtml(msg.text || "")}</div>
             <div class="text-[11px] mt-2 opacity-70">${timeText(msg.createdAt)}</div>
           </div>
         `;
-
         messagesEl.appendChild(wrapper);
       });
-
       messagesEl.scrollTop = messagesEl.scrollHeight;
     }
 
@@ -303,20 +345,19 @@
       users.forEach((user) => {
         const row = document.createElement("div");
         row.className = "bg-white rounded-xl border border-slate-200 p-3";
-
         const isAdmin = user.role === "admin";
         const isMe = currentUser && user.id === currentUser.uid;
 
         row.innerHTML = `
           <div class="flex items-start justify-between gap-3">
             <div>
-              <div class="font-semibold text-sm break-all">${escapeHtml(user.username || "Unknown")}${isMe ? ' <span class="text-xs text-slate-500">(you)</span>' : ''}</div>
+              <div class="font-semibold text-sm break-all">${escapeHtml(user.username || "Unknown")}${isMe ? ' <span class="text-xs text-slate-500">(you)</span>' : ""}</div>
               <div class="text-xs text-slate-500 mt-1">Role: ${escapeHtml(user.role || "member")}</div>
             </div>
             <div class="flex gap-2 flex-wrap justify-end">
-              ${!isAdmin ? `<button data-promote="${user.id}" class="promoteBtn text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg">Make Admin</button>` : ''}
-              ${isAdmin && !isMe ? `<button data-demote="${user.id}" class="demoteBtn text-xs bg-slate-200 text-slate-900 px-3 py-1.5 rounded-lg">Remove Admin</button>` : ''}
-              ${!isMe ? `<button data-delete-user="${user.id}" class="deleteUserBtn text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg">Delete User</button>` : ''}
+              ${!isAdmin ? `<button data-promote="${user.id}" class="promoteBtn text-xs bg-slate-900 text-white px-3 py-1.5 rounded-lg">Make Admin</button>` : ""}
+              ${isAdmin && !isMe ? `<button data-demote="${user.id}" class="demoteBtn text-xs bg-slate-200 text-slate-900 px-3 py-1.5 rounded-lg">Remove Admin</button>` : ""}
+              ${!isMe ? `<button data-delete-user="${user.id}" class="deleteUserBtn text-xs bg-red-600 text-white px-3 py-1.5 rounded-lg">Delete User</button>` : ""}
             </div>
           </div>
         `;
@@ -325,51 +366,70 @@
       });
 
       document.querySelectorAll(".promoteBtn").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          const uid = btn.dataset.promote;
-          await updateDoc(doc(db, "chatUsers", uid), { role: "admin" });
+        btn.onclick = async () => {
+          await updateDoc(doc(db, "chatUsers", btn.dataset.promote), { role: "admin" });
           await refreshUserList();
-        });
+        };
       });
 
       document.querySelectorAll(".demoteBtn").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          const uid = btn.dataset.demote;
-          await updateDoc(doc(db, "chatUsers", uid), { role: "member" });
+        btn.onclick = async () => {
+          await updateDoc(doc(db, "chatUsers", btn.dataset.demote), { role: "member" });
           await refreshUserList();
-        });
+        };
       });
 
       document.querySelectorAll(".deleteUserBtn").forEach((btn) => {
-        btn.addEventListener("click", async () => {
-          const uid = btn.dataset.deleteUser;
-          const ok = confirm("Delete this user record? This does not remove their Firebase auth account, but it removes them from the chat user list until they rejoin.");
+        btn.onclick = async () => {
+          const ok = confirm("Delete this user record? This removes them from the chat user list until they rejoin.");
           if (!ok) return;
-          await deleteDoc(doc(db, "chatUsers", uid));
+          await deleteDoc(doc(db, "chatUsers", btn.dataset.deleteUser));
           await refreshUserList();
-        });
+        };
       });
     }
 
+    async function ensureSignedIn() {
+      if (!isAppConfigured) {
+        throw new Error("Firebase config is still placeholder text. Paste in your real Firebase config first.");
+      }
+      await authReadyPromise;
+      if (!currentUser) {
+        throw new Error("Could not sign in to Firebase. Check Anonymous Auth and your config.");
+      }
+      return currentUser;
+    }
+
     async function registerUser(username) {
-      if (!currentUser) throw new Error("Not signed in.");
+      await ensureSignedIn();
 
       const trimmed = username.trim();
       if (!trimmed) throw new Error("Please enter a username.");
+      if (trimmed.length < 2) throw new Error("Username must be at least 2 characters.");
 
       const countersRef = doc(db, "chatMeta", "counters");
       const userRef = doc(db, "chatUsers", currentUser.uid);
+      const existingUsersSnap = await getDocs(collection(db, "chatUsers"));
+      const taken = existingUsersSnap.docs.some((d) => {
+        const data = d.data();
+        return (data.username || "").toLowerCase() === trimmed.toLowerCase() && d.id !== currentUser.uid;
+      });
+      if (taken) throw new Error("That username is already taken. Pick another one.");
 
       await runTransaction(db, async (transaction) => {
         const counterSnap = await transaction.get(countersRef);
         const userSnap = await transaction.get(userRef);
 
         if (userSnap.exists()) {
-          throw new Error("This account already joined.");
+          transaction.update(userRef, {
+            username: trimmed,
+            online: true,
+            lastSeen: serverTimestamp()
+          });
+          return;
         }
 
         let role = "member";
-
         if (!counterSnap.exists()) {
           role = "admin";
           transaction.set(countersRef, {
@@ -429,8 +489,10 @@
 
       unsubUsers = onSnapshot(collection(db, "chatUsers"), (snapshot) => {
         let onlineCount = 0;
+        const users = [];
         snapshot.forEach((docSnap) => {
           const data = docSnap.data();
+          users.push({ id: docSnap.id, ...data });
           if (data.online) onlineCount += 1;
           if (currentUser && docSnap.id === currentUser.uid) {
             currentProfile = data;
@@ -438,8 +500,9 @@
           }
         });
         onlineCountBadge.textContent = `${onlineCount} user${onlineCount === 1 ? "" : "s"}`;
-        if (currentProfile && currentProfile.role === "admin") {
-          refreshUserList();
+        renderOnlineUsers(users);
+        if (currentProfile?.role === "admin") {
+          refreshUserList().catch(console.error);
         }
       });
     }
@@ -475,7 +538,7 @@
     }
 
     async function markOffline() {
-      if (!currentUser) return;
+      if (!currentUser || !db) return;
       const userRef = doc(db, "chatUsers", currentUser.uid);
       try {
         const snap = await getDoc(userRef);
@@ -490,18 +553,48 @@
       }
     }
 
-    // =========================================================
-    // Events
-    // =========================================================
+    function runSelfTests() {
+      const tests = [
+        {
+          name: "escapeHtml encodes tags",
+          test: () => escapeHtml("<b>x</b>") === "&lt;b&gt;x&lt;/b&gt;"
+        },
+        {
+          name: "placeholder config detection works",
+          test: () => isPlaceholderConfig({ apiKey: "YOUR_API_KEY", appId: "x" }) === true
+        },
+        {
+          name: "real-looking config is not placeholder",
+          test: () => isPlaceholderConfig({ apiKey: "abc", appId: "x" }) === false
+        },
+        {
+          name: "timeText handles missing values",
+          test: () => timeText(null) === "just now"
+        }
+      ];
+
+      const failed = tests.filter((t) => !t.test());
+      if (failed.length === 0) {
+        console.log("Self-tests passed:", tests.map((t) => t.name));
+      } else {
+        console.error("Self-tests failed:", failed.map((t) => t.name));
+      }
+    }
+
     joinForm.addEventListener("submit", async (e) => {
       e.preventDefault();
-      joinStatus.textContent = "Joining...";
+      if (isJoining) return;
+      isJoining = true;
+      setJoinState({ disabled: true, buttonText: "Joining...", statusText: "Joining..." });
+
       try {
         await registerUser(usernameInput.value);
-        joinStatus.textContent = "";
+        setJoinState({ disabled: false, buttonText: "Enter Chat", statusText: "" });
       } catch (err) {
         console.error(err);
-        joinStatus.textContent = err.message || "Could not join chat.";
+        setJoinState({ disabled: false, buttonText: "Enter Chat", statusText: err.message || "Could not join chat." });
+      } finally {
+        isJoining = false;
       }
     });
 
@@ -545,49 +638,89 @@
     });
 
     document.addEventListener("visibilitychange", async () => {
-      if (!currentUser) return;
+      if (!currentUser || !db) return;
       const userRef = doc(db, "chatUsers", currentUser.uid);
       try {
-        if (document.hidden) {
-          await updateDoc(userRef, {
-            online: false,
-            lastSeen: serverTimestamp()
-          });
-        } else {
-          await updateDoc(userRef, {
-            online: true,
-            lastSeen: serverTimestamp()
-          });
-        }
+        await updateDoc(userRef, {
+          online: !document.hidden,
+          lastSeen: serverTimestamp()
+        });
       } catch (e) {
         console.warn(e);
       }
     });
 
-    // =========================================================
-    // Boot
-    // =========================================================
     async function boot() {
-      try {
-        await signInAnonymously(auth);
-      } catch (err) {
-        console.error("Anonymous auth error:", err);
-        joinStatus.textContent = "Firebase anonymous login failed. Enable Anonymous Auth in Firebase.";
-      }
-    }
+      runSelfTests();
 
-    onAuthStateChanged(auth, async (user) => {
-      currentUser = user;
-      if (!user) {
+      if (isPlaceholderConfig(firebaseConfig)) {
+        setJoinState({
+          disabled: true,
+          buttonText: "Setup Needed",
+          statusText: "Paste your real Firebase config into the code first."
+        });
         showJoin();
         return;
       }
 
-      const loaded = await loadExistingProfile();
-      if (!loaded) {
+      isAppConfigured = true;
+      setJoinState({
+        disabled: true,
+        buttonText: "Connecting...",
+        statusText: "Connecting to Firebase..."
+      });
+
+      app = initializeApp(firebaseConfig);
+      auth = getAuth(app);
+      db = getFirestore(app);
+
+      onAuthStateChanged(auth, async (user) => {
+        currentUser = user;
+        resolveAuthReady(user);
+
+        if (!user) {
+          showJoin();
+          setJoinState({
+            disabled: true,
+            buttonText: "Connecting...",
+            statusText: "Signing you in..."
+          });
+          return;
+        }
+
+        try {
+          const loaded = await loadExistingProfile();
+          if (!loaded) {
+            showJoin();
+            setJoinState({
+              disabled: false,
+              buttonText: "Enter Chat",
+              statusText: "Connected. Enter a username."
+            });
+          }
+        } catch (err) {
+          console.error(err);
+          showJoin();
+          setJoinState({
+            disabled: false,
+            buttonText: "Enter Chat",
+            statusText: "Connected, but profile loading failed. Check Firestore rules."
+          });
+        }
+      });
+
+      try {
+        await signInAnonymously(auth);
+      } catch (err) {
+        console.error("Anonymous auth error:", err);
         showJoin();
+        setJoinState({
+          disabled: true,
+          buttonText: "Auth Failed",
+          statusText: "Firebase anonymous login failed. Turn on Anonymous Auth and check your config."
+        });
       }
-    });
+    }
 
     boot();
   </script>
