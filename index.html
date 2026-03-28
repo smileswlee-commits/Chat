@@ -142,6 +142,7 @@
       broadcastPing: "private_chat_ping_v2"
     };
 
+    const WINDOW_NAME_SESSION_PREFIX = "private_chat_session_v2:";
     const CHANNEL_NAME = "private_chat_channel_v2";
     const PRESENCE_TTL_MS = 45000;
 
@@ -240,16 +241,46 @@
       notifyAllTabs({ type: "presence-updated" });
     }
 
+    function getSessionFromWindowName() {
+      try {
+        if (!window.name || !window.name.startsWith(WINDOW_NAME_SESSION_PREFIX)) return null;
+        return JSON.parse(window.name.slice(WINDOW_NAME_SESSION_PREFIX.length));
+      } catch {
+        return null;
+      }
+    }
+
+    function writeSessionToWindowName(session) {
+      try {
+        if (session) {
+          window.name = WINDOW_NAME_SESSION_PREFIX + JSON.stringify(session);
+        } else if (window.name && window.name.startsWith(WINDOW_NAME_SESSION_PREFIX)) {
+          window.name = "";
+        }
+      } catch {
+        // Ignore window.name failures.
+      }
+    }
+
     function getSession() {
-      return getStoredJson(STORAGE_KEYS.session, null);
+      const localSession = getStoredJson(STORAGE_KEYS.session, null);
+      if (localSession) return localSession;
+      const windowNameSession = getSessionFromWindowName();
+      if (windowNameSession) {
+        setStoredJson(STORAGE_KEYS.session, windowNameSession);
+        return windowNameSession;
+      }
+      return null;
     }
 
     function setSession(session) {
       currentSession = session;
       if (session) {
         setStoredJson(STORAGE_KEYS.session, session);
+        writeSessionToWindowName(session);
       } else {
         localStorage.removeItem(STORAGE_KEYS.session);
+        writeSessionToWindowName(null);
       }
     }
 
@@ -601,8 +632,15 @@
     logoutBtn.addEventListener("click", leaveChat);
 
     window.addEventListener("beforeunload", () => {
-      // Keep the saved session on refresh so the user stays logged in.
-      // Presence is cleaned up automatically later if the tab is truly closed.
+      // Keep the saved session on refresh, especially for embedded Google Sites pages.
+      if (currentSession) {
+        writeSessionToWindowName(currentSession);
+        try {
+          setStoredJson(STORAGE_KEYS.session, currentSession);
+        } catch {
+          // Ignore storage write failures on unload.
+        }
+      }
       notifyAllTabs({ type: "tab-refresh-or-close" });
     });
 
@@ -655,15 +693,18 @@
       runSelfTests();
       updateJoinMode();
       renderInviteList();
+
       const existing = getSession();
       if (existing) {
-        const validExisting = !isBootstrapped() || !existing.email || isInvited(existing.email) || existing.role === "admin";
+        const restoredSession = {
+          username: String(existing.username || "Guest").trim() || "Guest",
+          email: normalizeEmail(existing.email || ""),
+          role: existing.role || "member"
+        };
+
+        const validExisting = !isBootstrapped() || !restoredSession.email || isInvited(restoredSession.email) || restoredSession.role === "admin";
         if (validExisting) {
-          enterChat({
-            username: String(existing.username || "Guest").trim() || "Guest",
-            email: normalizeEmail(existing.email || ""),
-            role: existing.role || "member"
-          });
+          enterChat(restoredSession);
         } else {
           setSession(null);
           showJoin();
@@ -671,6 +712,7 @@
       } else {
         showJoin();
       }
+
       renderMessages();
       renderOnlineUsers();
     }
