@@ -1,0 +1,862 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Live Community Chat</title>
+
+  <!-- Tailwind CSS -->
+  <script src="https://cdn.tailwindcss.com"></script>
+
+  <!-- Phosphor Icons -->
+  <script src="https://unpkg.com/@phosphor-icons/web"></script>
+
+  <style>
+    html, body {
+      height: 100%;
+      margin: 0;
+      background: transparent;
+      font-family: ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    }
+
+    ::-webkit-scrollbar { width: 6px; height: 6px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: #cbd5e1; border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #94a3b8; }
+
+    .message-enter {
+      animation: fadeInUp 0.18s ease-out;
+    }
+
+    @keyframes fadeInUp {
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .panel-transition {
+      transition: transform 0.28s ease;
+    }
+
+    .modal-fade {
+      transition: opacity 0.25s ease, visibility 0.25s ease;
+    }
+  </style>
+</head>
+<body class="flex items-center justify-center p-2 sm:p-4">
+
+  <div class="relative flex flex-col w-full h-full max-w-md max-h-[700px] bg-white border border-gray-200 shadow-2xl rounded-2xl overflow-hidden">
+
+    <!-- Join Modal -->
+    <div id="joinModal" class="absolute inset-0 z-50 bg-white/95 backdrop-blur-md flex items-center justify-center modal-fade">
+      <div class="w-full max-w-sm px-6 py-8 text-center">
+        <div class="w-16 h-16 mx-auto rounded-full bg-blue-100 text-blue-600 flex items-center justify-center mb-4">
+          <i class="ph-fill ph-chats-circle text-3xl"></i>
+        </div>
+
+        <h1 class="text-2xl font-bold text-gray-800 mb-2">Join the Live Chat</h1>
+        <p class="text-sm text-gray-500 mb-6">
+          Enter a display name to join the conversation.
+        </p>
+
+        <div class="space-y-3">
+          <input
+            id="nameInput"
+            type="text"
+            maxlength="20"
+            placeholder="Your name"
+            autocomplete="off"
+            class="w-full px-4 py-3 bg-gray-50 border border-gray-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
+          />
+
+          <button
+            id="joinBtn"
+            type="button"
+            class="w-full bg-blue-600 hover:bg-blue-700 text-white font-semibold py-3 rounded-xl shadow-md shadow-blue-200 transition-all flex items-center justify-center gap-2"
+          >
+            Start Chatting
+            <i class="ph-bold ph-arrow-right"></i>
+          </button>
+
+          <p id="joinStatus" class="hidden text-sm text-blue-600 font-medium animate-pulse pt-1">
+            Connecting...
+          </p>
+
+          <p class="text-xs text-gray-400 pt-2">
+            Tip: keep the same name if you want people to recognize you.
+          </p>
+        </div>
+      </div>
+    </div>
+
+    <!-- Online Panel -->
+    <div id="onlinePanel" class="absolute inset-0 bg-white z-40 translate-x-full panel-transition flex flex-col">
+      <div class="flex items-center justify-between px-5 py-4 bg-gray-800 text-white">
+        <h2 class="text-base font-semibold flex items-center gap-2">
+          <i class="ph-fill ph-users"></i>
+          Online Users
+        </h2>
+        <button id="closeOnlineBtn" class="text-gray-300 hover:text-white">
+          <i class="ph-bold ph-x text-xl"></i>
+        </button>
+      </div>
+
+      <div id="onlineUsersList" class="flex-1 overflow-y-auto p-4 space-y-3 bg-gray-50"></div>
+    </div>
+
+    <!-- Admin Panel -->
+    <div id="adminPanel" class="absolute inset-0 bg-white z-40 translate-x-full panel-transition flex flex-col">
+      <div class="flex items-center justify-between px-5 py-4 bg-amber-600 text-white">
+        <h2 class="text-base font-semibold flex items-center gap-2">
+          <i class="ph-fill ph-shield-check"></i>
+          Admin Controls
+        </h2>
+        <button id="closeAdminBtn" class="text-amber-100 hover:text-white">
+          <i class="ph-bold ph-x text-xl"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto p-5 space-y-5 bg-gray-50">
+        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <h3 class="font-bold text-gray-800 mb-1">System Announcement</h3>
+          <p class="text-xs text-gray-500 mb-3">
+            Send a highlighted announcement to everyone in the room.
+          </p>
+          <input
+            id="announcementInput"
+            type="text"
+            maxlength="250"
+            placeholder="Type announcement..."
+            class="w-full px-3 py-2 bg-gray-50 border border-gray-200 rounded-lg text-sm mb-3 focus:outline-none focus:ring-2 focus:ring-amber-500"
+          />
+          <button
+            id="sendAnnouncementBtn"
+            class="w-full bg-amber-500 hover:bg-amber-600 text-white font-medium py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+          >
+            <i class="ph-bold ph-megaphone"></i>
+            Send Announcement
+          </button>
+        </div>
+
+        <div class="bg-white border border-gray-200 rounded-xl p-4 shadow-sm">
+          <h3 class="font-bold text-gray-800 mb-1">Clear Chat History</h3>
+          <p class="text-xs text-gray-500 mb-3">
+            Permanently remove all current messages from the chat.
+          </p>
+          <button
+            id="clearChatBtn"
+            class="w-full bg-red-500 hover:bg-red-600 text-white font-medium py-2 rounded-lg transition-colors text-sm flex items-center justify-center gap-2"
+          >
+            <i class="ph-bold ph-trash"></i>
+            Clear All Messages
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Header -->
+    <div class="flex items-center justify-between px-5 py-4 bg-blue-600 text-white z-10">
+      <div class="flex items-center gap-3 min-w-0">
+        <div class="relative flex items-center justify-center w-10 h-10 bg-blue-500 rounded-full font-bold text-lg shrink-0">
+          <i class="ph-fill ph-chat-teardrop-text"></i>
+          <span class="absolute bottom-0 right-0 w-3 h-3 bg-green-400 border-2 border-blue-600 rounded-full"></span>
+        </div>
+        <div class="min-w-0">
+          <h2 class="text-base font-semibold leading-tight truncate">Live Community</h2>
+          <p id="headerStatus" class="text-xs text-blue-200 truncate">Waiting to join...</p>
+        </div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <button
+          id="openAdminBtn"
+          class="hidden flex items-center justify-center w-8 h-8 text-amber-100 hover:text-white bg-amber-700/50 hover:bg-amber-600 rounded-full transition-colors"
+          title="Admin Panel"
+        >
+          <i class="ph-fill ph-shield-check text-lg"></i>
+        </button>
+
+        <button
+          id="openOnlineBtn"
+          class="flex items-center gap-1.5 p-1.5 pr-2.5 text-blue-100 hover:text-white bg-blue-700/50 hover:bg-blue-700 rounded-full transition-colors text-sm font-medium"
+        >
+          <i class="ph-fill ph-users text-lg"></i>
+          <span id="onlineCount">0</span>
+        </button>
+      </div>
+    </div>
+
+    <!-- Message List -->
+    <div id="messagesContainer" class="flex-1 overflow-y-auto p-5 space-y-4 bg-gray-50 flex flex-col">
+      <div class="mx-auto text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-3 py-1 shadow-sm">
+        Messages appear here in real time
+      </div>
+    </div>
+
+    <!-- Input -->
+    <div class="p-4 bg-white border-t border-gray-100">
+      <div class="flex items-end gap-2">
+        <div class="flex-1 bg-gray-100 rounded-2xl border border-transparent focus-within:border-blue-400 focus-within:bg-white focus-within:ring-2 focus-within:ring-blue-100 transition-all overflow-hidden flex items-center pr-2">
+          <input
+            id="messageInput"
+            type="text"
+            placeholder="Type a message..."
+            autocomplete="off"
+            maxlength="400"
+            disabled
+            class="w-full bg-transparent px-4 py-3 text-sm text-gray-800 placeholder-gray-400 focus:outline-none disabled:opacity-50"
+          />
+        </div>
+
+        <button
+          id="sendBtn"
+          type="button"
+          disabled
+          class="flex items-center justify-center w-12 h-12 rounded-full bg-blue-600 text-white hover:bg-blue-700 focus:outline-none transition-all flex-shrink-0 shadow-md shadow-blue-200 disabled:opacity-50 disabled:cursor-not-allowed"
+        >
+          <i class="ph-fill ph-paper-plane-right text-lg ml-0.5"></i>
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <script type="module">
+    import { initializeApp } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js";
+    import {
+      getAuth,
+      signInAnonymously,
+      onAuthStateChanged
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js";
+
+    import {
+      getDatabase,
+      ref,
+      push,
+      set,
+      get,
+      remove,
+      onValue,
+      onDisconnect,
+      update,
+      query,
+      orderByChild,
+      limitToLast
+    } from "https://www.gstatic.com/firebasejs/11.6.1/firebase-database.js";
+
+    /******************************************************************
+     * 1) FIREBASE CONFIG
+     * ---------------------------------------------------------------
+     * 여기에 본인 Firebase 프로젝트 Web App 설정값을 넣으세요.
+     ******************************************************************/
+    const FIREBASE_CONFIG = {
+      apiKey: "PASTE_YOUR_API_KEY",
+      authDomain: "PASTE_YOUR_PROJECT.firebaseapp.com",
+      databaseURL: "https://PASTE_YOUR_PROJECT_ID-default-rtdb.firebaseio.com",
+      projectId: "PASTE_YOUR_PROJECT_ID",
+      storageBucket: "PASTE_YOUR_PROJECT.appspot.com",
+      messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID",
+      appId: "PASTE_YOUR_APP_ID"
+    };
+
+    /******************************************************************
+     * 2) BASIC SETTINGS
+     ******************************************************************/
+    const ROOM_ID = "main-room";
+    const MAX_MESSAGES = 200;
+    const MESSAGE_COOLDOWN_MS = 1200;
+    const ADMIN_NAMES = ["Admin", "Sarah Cho"];
+    const BLOCKED_WORDS = [
+      "spamword1",
+      "spamword2"
+    ];
+
+    /******************************************************************
+     * 3) ELEMENTS
+     ******************************************************************/
+    const joinModal = document.getElementById("joinModal");
+    const nameInput = document.getElementById("nameInput");
+    const joinBtn = document.getElementById("joinBtn");
+    const joinStatus = document.getElementById("joinStatus");
+
+    const headerStatus = document.getElementById("headerStatus");
+    const onlineCount = document.getElementById("onlineCount");
+
+    const openOnlineBtn = document.getElementById("openOnlineBtn");
+    const closeOnlineBtn = document.getElementById("closeOnlineBtn");
+    const onlinePanel = document.getElementById("onlinePanel");
+    const onlineUsersList = document.getElementById("onlineUsersList");
+
+    const openAdminBtn = document.getElementById("openAdminBtn");
+    const closeAdminBtn = document.getElementById("closeAdminBtn");
+    const adminPanel = document.getElementById("adminPanel");
+
+    const announcementInput = document.getElementById("announcementInput");
+    const sendAnnouncementBtn = document.getElementById("sendAnnouncementBtn");
+    const clearChatBtn = document.getElementById("clearChatBtn");
+
+    const messagesContainer = document.getElementById("messagesContainer");
+    const messageInput = document.getElementById("messageInput");
+    const sendBtn = document.getElementById("sendBtn");
+
+    /******************************************************************
+     * 4) APP STATE
+     ******************************************************************/
+    let app = null;
+    let auth = null;
+    let db = null;
+
+    let currentUser = null;
+    let currentUserName = "";
+    let isAdmin = false;
+    let joined = false;
+    let lastSentAt = 0;
+
+    let renderedMessageIds = new Set();
+
+    /******************************************************************
+     * 5) INITIALIZE FIREBASE
+     ******************************************************************/
+    try {
+      app = initializeApp(FIREBASE_CONFIG);
+      auth = getAuth(app);
+      db = getDatabase(app);
+    } catch (err) {
+      console.error("Firebase initialization failed:", err);
+      alert("Firebase 설정이 올바르지 않습니다. FIREBASE_CONFIG를 먼저 입력해 주세요.");
+    }
+
+    /******************************************************************
+     * 6) HELPERS
+     ******************************************************************/
+    function escapeHTML(str = "") {
+      return str.replace(/[&<>'"]/g, (tag) => ({
+        "&": "&amp;",
+        "<": "&lt;",
+        ">": "&gt;",
+        "'": "&#39;",
+        '"': "&quot;"
+      }[tag]));
+    }
+
+    function sanitizeText(text = "") {
+      let cleaned = text.trim();
+      BLOCKED_WORDS.forEach((w) => {
+        if (!w) return;
+        const re = new RegExp(w, "gi");
+        cleaned = cleaned.replace(re, "•••");
+      });
+      return cleaned;
+    }
+
+    function formatTime(timestamp) {
+      try {
+        return new Date(timestamp).toLocaleTimeString([], {
+          hour: "2-digit",
+          minute: "2-digit"
+        });
+      } catch {
+        return "";
+      }
+    }
+
+    function scrollToBottom(force = false) {
+      const nearBottom =
+        messagesContainer.scrollHeight - messagesContainer.scrollTop - messagesContainer.clientHeight < 140;
+
+      if (force || nearBottom) {
+        messagesContainer.scrollTop = messagesContainer.scrollHeight;
+      }
+    }
+
+    function setJoinLoading(loading, text = "Connecting...") {
+      if (loading) {
+        joinStatus.textContent = text;
+        joinStatus.classList.remove("hidden");
+        joinBtn.disabled = true;
+        nameInput.disabled = true;
+      } else {
+        joinStatus.classList.add("hidden");
+        joinBtn.disabled = false;
+        nameInput.disabled = false;
+      }
+    }
+
+    function closeJoinModal() {
+      joinModal.classList.add("opacity-0", "pointer-events-none");
+      setTimeout(() => {
+        joinModal.style.display = "none";
+      }, 250);
+    }
+
+    function openPanel(panel) {
+      panel.classList.remove("translate-x-full");
+    }
+
+    function closePanel(panel) {
+      panel.classList.add("translate-x-full");
+    }
+
+    function getInitial(name) {
+      return (name || "?").trim().charAt(0).toUpperCase() || "?";
+    }
+
+    function showHeaderConnected() {
+      headerStatus.textContent = `Connected as ${currentUserName}`;
+      messageInput.disabled = false;
+      messageInput.focus();
+    }
+
+    function updateSendButtonState() {
+      sendBtn.disabled = !messageInput.value.trim();
+    }
+
+    /******************************************************************
+     * 7) DATABASE PATHS
+     ******************************************************************/
+    function roomBasePath(roomId) {
+      return `chatRooms/${roomId}`;
+    }
+
+    function messagesPath(roomId) {
+      return `${roomBasePath(roomId)}/messages`;
+    }
+
+    function usersPath(roomId) {
+      return `${roomBasePath(roomId)}/onlineUsers`;
+    }
+
+    function metaPath(roomId) {
+      return `${roomBasePath(roomId)}/meta`;
+    }
+
+    /******************************************************************
+     * 8) ADMIN CHECK
+     * ---------------------------------------------------------------
+     * 아주 단순하게 이름 기준으로 admin 처리
+     * 공개 사이트면 나중에 UID 고정 방식으로 바꾸는 게 더 안전합니다.
+     ******************************************************************/
+    function computeIsAdmin(name) {
+      return ADMIN_NAMES.some(adminName => adminName.toLowerCase() === name.toLowerCase());
+    }
+
+    /******************************************************************
+     * 9) JOIN FLOW
+     ******************************************************************/
+    async function handleJoin() {
+      const enteredName = nameInput.value.trim();
+
+      if (!enteredName) {
+        nameInput.classList.add("border-red-500", "ring-2", "ring-red-200");
+        nameInput.value = "";
+        nameInput.placeholder = "Name is required";
+        setTimeout(() => {
+          nameInput.classList.remove("border-red-500", "ring-2", "ring-red-200");
+          nameInput.placeholder = "Your name";
+        }, 1800);
+        return;
+      }
+
+      currentUserName = enteredName;
+      isAdmin = computeIsAdmin(currentUserName);
+      joined = true;
+
+      setJoinLoading(true, "Signing in...");
+
+      try {
+        await signInAnonymously(auth);
+      } catch (err) {
+        console.error("Anonymous sign-in failed:", err);
+        setJoinLoading(false);
+        alert("로그인 연결에 실패했습니다. Firebase Authentication 설정을 확인해 주세요.");
+      }
+    }
+
+    joinBtn.addEventListener("click", handleJoin);
+    nameInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        handleJoin();
+      }
+    });
+
+    /******************************************************************
+     * 10) AUTH STATE
+     ******************************************************************/
+    onAuthStateChanged(auth, async (user) => {
+      currentUser = user;
+
+      if (!user || !joined) return;
+
+      try {
+        setJoinLoading(true, "Connecting to live chat...");
+        await registerPresence();
+        listenForOnlineUsers();
+        listenForMessages();
+
+        if (isAdmin) {
+          openAdminBtn.classList.remove("hidden");
+        }
+
+        showHeaderConnected();
+        closeJoinModal();
+        setJoinLoading(false);
+      } catch (err) {
+        console.error("Post-auth setup failed:", err);
+        setJoinLoading(false);
+        alert("실시간 채팅 연결에 실패했습니다. Database URL / Rules를 확인해 주세요.");
+      }
+    });
+
+    /******************************************************************
+     * 11) PRESENCE / ONLINE USERS
+     * ---------------------------------------------------------------
+     * Realtime Database의 .info/connected + onDisconnect 사용
+     ******************************************************************/
+    async function registerPresence() {
+      if (!currentUser) return;
+
+      const uid = currentUser.uid;
+      const userRef = ref(db, `${usersPath(ROOM_ID)}/${uid}`);
+      const connectedRef = ref(db, ".info/connected");
+
+      onValue(connectedRef, async (snap) => {
+        if (snap.val() !== true) return;
+
+        try {
+          await onDisconnect(userRef).remove();
+
+          await set(userRef, {
+            uid,
+            name: currentUserName,
+            isAdmin,
+            joinedAt: Date.now(),
+            lastActive: Date.now()
+          });
+        } catch (err) {
+          console.error("Presence setup failed:", err);
+        }
+      });
+
+      setInterval(async () => {
+        if (!currentUser) return;
+        try {
+          await update(userRef, {
+            lastActive: Date.now()
+          });
+        } catch (err) {
+          console.error("Heartbeat update failed:", err);
+        }
+      }, 30000);
+    }
+
+    function listenForOnlineUsers() {
+      const usersRef = ref(db, usersPath(ROOM_ID));
+
+      onValue(usersRef, (snap) => {
+        onlineUsersList.innerHTML = "";
+
+        const usersObj = snap.val() || {};
+        const users = Object.values(usersObj);
+
+        users.sort((a, b) => {
+          if (a.isAdmin && !b.isAdmin) return -1;
+          if (!a.isAdmin && b.isAdmin) return 1;
+          return (a.joinedAt || 0) - (b.joinedAt || 0);
+        });
+
+        onlineCount.textContent = users.length;
+
+        if (users.length === 0) {
+          onlineUsersList.innerHTML = `
+            <div class="text-sm text-gray-500 text-center py-8">
+              No users online right now.
+            </div>
+          `;
+          return;
+        }
+
+        for (const user of users) {
+          appendUserToSidebar(user, user.uid === currentUser?.uid);
+        }
+      });
+    }
+
+    function appendUserToSidebar(user, isMe) {
+      const initial = getInitial(user.name);
+
+      const userDiv = document.createElement("div");
+      userDiv.className = "flex items-center justify-between p-3 bg-white rounded-xl shadow-sm border border-gray-100";
+
+      userDiv.innerHTML = `
+        <div class="flex items-center gap-3 min-w-0">
+          <div class="w-10 h-10 rounded-full ${user.isAdmin ? "bg-amber-100 text-amber-600" : "bg-indigo-100 text-indigo-600"} flex items-center justify-center font-bold shrink-0">
+            ${escapeHTML(initial)}
+          </div>
+          <div class="min-w-0">
+            <div class="flex items-center gap-2 flex-wrap">
+              <span class="font-semibold text-gray-800 text-sm truncate">${escapeHTML(user.name || "Unknown")}</span>
+              ${isMe ? `<span class="text-[9px] bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded font-medium">YOU</span>` : ""}
+              ${user.isAdmin ? `<span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold inline-flex items-center gap-1"><i class="ph-fill ph-star"></i>ADMIN</span>` : ""}
+            </div>
+            <span class="text-xs text-green-500 flex items-center gap-1">
+              <span class="w-1.5 h-1.5 bg-green-500 rounded-full inline-block"></span>
+              Online
+            </span>
+          </div>
+        </div>
+      `;
+
+      onlineUsersList.appendChild(userDiv);
+    }
+
+    /******************************************************************
+     * 12) MESSAGES
+     ******************************************************************/
+    function listenForMessages() {
+      const messagesRef = query(
+        ref(db, messagesPath(ROOM_ID)),
+        orderByChild("timestamp"),
+        limitToLast(MAX_MESSAGES)
+      );
+
+      onValue(messagesRef, (snap) => {
+        const messagesObj = snap.val() || {};
+        const messages = Object.entries(messagesObj).map(([id, value]) => ({
+          id,
+          ...value
+        }));
+
+        messages.sort((a, b) => (a.timestamp || 0) - (b.timestamp || 0));
+
+        messagesContainer.innerHTML = "";
+        renderedMessageIds.clear();
+
+        if (messages.length === 0) {
+          messagesContainer.innerHTML = `
+            <div class="mx-auto text-xs text-gray-400 bg-white border border-gray-200 rounded-full px-3 py-1 shadow-sm">
+              No messages yet. Say hello first.
+            </div>
+          `;
+          return;
+        }
+
+        for (const msg of messages) {
+          appendMessageToDOM(msg);
+          renderedMessageIds.add(msg.id);
+        }
+
+        scrollToBottom(true);
+      });
+    }
+
+    function appendMessageToDOM(msg) {
+      const isMe = msg.senderId === currentUser?.uid;
+      const safeText = escapeHTML(msg.text || "");
+      const senderName = msg.senderName || "Unknown";
+      const timeString = formatTime(msg.timestamp || Date.now());
+      const initial = getInitial(senderName);
+
+      const wrapper = document.createElement("div");
+      wrapper.id = `msg-${msg.id}`;
+      wrapper.className = "message-enter";
+
+      if (msg.type === "system") {
+        wrapper.classList.add("flex", "flex-col", "items-center", "justify-center", "w-full", "my-4");
+        wrapper.innerHTML = `
+          <div class="bg-amber-100 border border-amber-200 text-amber-800 text-sm px-5 py-2.5 rounded-2xl font-medium shadow-sm flex items-center gap-2.5 max-w-[90%] text-center leading-snug">
+            <i class="ph-fill ph-megaphone text-amber-600 text-lg flex-shrink-0"></i>
+            <span>${safeText}</span>
+          </div>
+        `;
+      } else if (isMe) {
+        wrapper.classList.add("flex", "items-end", "gap-2", "self-end", "max-w-[85%]", "flex-row-reverse");
+
+        wrapper.innerHTML = `
+          <div class="flex flex-col gap-1 items-end">
+            <span class="text-[11px] text-gray-400 flex items-center gap-1.5 flex-wrap justify-end">
+              ${msg.isAdmin ? `<span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold inline-flex items-center"><i class="ph-fill ph-star mr-0.5"></i>ADMIN</span>` : ""}
+              You • ${timeString}
+            </span>
+            <div class="px-4 py-2.5 bg-blue-600 text-white rounded-2xl rounded-br-none shadow-sm text-sm leading-relaxed break-words whitespace-pre-wrap">
+              ${safeText}
+            </div>
+          </div>
+        `;
+      } else {
+        wrapper.classList.add("flex", "items-end", "gap-2", "self-start", "max-w-[85%]");
+
+        wrapper.innerHTML = `
+          <div class="w-8 h-8 rounded-full ${msg.isAdmin ? "bg-amber-100 border-amber-200 text-amber-600" : "bg-indigo-100 border-indigo-200 text-indigo-600"} border flex items-center justify-center flex-shrink-0 text-sm font-bold shadow-sm">
+            ${escapeHTML(initial)}
+          </div>
+          <div class="flex flex-col gap-1">
+            <span class="text-[11px] text-gray-400 ml-1 flex items-center gap-1.5 flex-wrap">
+              ${escapeHTML(senderName)}
+              ${msg.isAdmin ? `<span class="text-[9px] bg-amber-100 text-amber-700 px-1.5 py-0.5 rounded font-bold inline-flex items-center"><i class="ph-fill ph-star mr-0.5"></i>ADMIN</span>` : ""}
+              • ${timeString}
+            </span>
+            <div class="px-4 py-2.5 bg-white text-gray-800 rounded-2xl rounded-bl-none shadow-sm border border-gray-100 text-sm leading-relaxed break-words whitespace-pre-wrap">
+              ${safeText}
+            </div>
+          </div>
+        `;
+      }
+
+      messagesContainer.appendChild(wrapper);
+    }
+
+    async function sendMessage() {
+      const rawText = messageInput.value.trim();
+      if (!rawText || !currentUser) return;
+
+      const now = Date.now();
+      if (now - lastSentAt < MESSAGE_COOLDOWN_MS) {
+        return;
+      }
+
+      const text = sanitizeText(rawText);
+      if (!text) return;
+
+      lastSentAt = now;
+      messageInput.disabled = true;
+      sendBtn.disabled = true;
+
+      try {
+        const newMsgRef = push(ref(db, messagesPath(ROOM_ID)));
+        await set(newMsgRef, {
+          type: "user",
+          text,
+          senderId: currentUser.uid,
+          senderName: currentUserName,
+          isAdmin,
+          timestamp: Date.now()
+        });
+
+        const myUserRef = ref(db, `${usersPath(ROOM_ID)}/${currentUser.uid}`);
+        await update(myUserRef, { lastActive: Date.now() });
+
+        messageInput.value = "";
+      } catch (err) {
+        console.error("Send message failed:", err);
+        alert("메시지 전송에 실패했습니다.");
+      } finally {
+        messageInput.disabled = false;
+        messageInput.focus();
+        updateSendButtonState();
+      }
+    }
+
+    /******************************************************************
+     * 13) ADMIN ACTIONS
+     ******************************************************************/
+    async function sendAnnouncement() {
+      if (!isAdmin) return;
+
+      const text = sanitizeText(announcementInput.value.trim());
+      if (!text) return;
+
+      try {
+        const newMsgRef = push(ref(db, messagesPath(ROOM_ID)));
+        await set(newMsgRef, {
+          type: "system",
+          text,
+          senderId: currentUser?.uid || "system",
+          senderName: "System",
+          isAdmin: true,
+          timestamp: Date.now()
+        });
+
+        announcementInput.value = "";
+        closePanel(adminPanel);
+      } catch (err) {
+        console.error("Announcement failed:", err);
+        alert("공지 전송에 실패했습니다.");
+      }
+    }
+
+    async function clearChat() {
+      if (!isAdmin) return;
+
+      const confirmed = confirm("정말 전체 채팅을 삭제하시겠습니까?");
+      if (!confirmed) return;
+
+      clearChatBtn.disabled = true;
+      clearChatBtn.innerHTML = `<i class="ph-bold ph-spinner animate-spin"></i> Clearing...`;
+
+      try {
+        await remove(ref(db, messagesPath(ROOM_ID)));
+
+        const sysRef = push(ref(db, messagesPath(ROOM_ID)));
+        await set(sysRef, {
+          type: "system",
+          text: "The chat history was cleared by an admin.",
+          senderId: currentUser?.uid || "system",
+          senderName: "System",
+          isAdmin: true,
+          timestamp: Date.now()
+        });
+
+        closePanel(adminPanel);
+      } catch (err) {
+        console.error("Clear chat failed:", err);
+        alert("채팅 삭제에 실패했습니다.");
+      } finally {
+        clearChatBtn.disabled = false;
+        clearChatBtn.innerHTML = `<i class="ph-bold ph-trash"></i> Clear All Messages`;
+      }
+    }
+
+    /******************************************************************
+     * 14) UI EVENTS
+     ******************************************************************/
+    openOnlineBtn.addEventListener("click", () => openPanel(onlinePanel));
+    closeOnlineBtn.addEventListener("click", () => closePanel(onlinePanel));
+
+    openAdminBtn.addEventListener("click", () => openPanel(adminPanel));
+    closeAdminBtn.addEventListener("click", () => closePanel(adminPanel));
+
+    messageInput.addEventListener("input", updateSendButtonState);
+    messageInput.addEventListener("keypress", (e) => {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+    sendBtn.addEventListener("click", sendMessage);
+
+    sendAnnouncementBtn.addEventListener("click", sendAnnouncement);
+    clearChatBtn.addEventListener("click", clearChat);
+
+    /******************************************************************
+     * 15) OPTIONAL: ROOM META INIT
+     ******************************************************************/
+    async function ensureRoomMeta() {
+      try {
+        const metaRef = ref(db, metaPath(ROOM_ID));
+        const snap = await get(metaRef);
+        if (!snap.exists()) {
+          await set(metaRef, {
+            createdAt: Date.now(),
+            roomId: ROOM_ID,
+            title: "Live Community"
+          });
+        }
+      } catch (err) {
+        console.error("Meta init failed:", err);
+      }
+    }
+
+    ensureRoomMeta();
+
+    /******************************************************************
+     * 16) CLEAN INPUT STATE ON LOAD
+     ******************************************************************/
+    updateSendButtonState();
+  </script>
+</body>
+</html>
