@@ -56,14 +56,15 @@
             <p class="text-sm text-slate-700 mt-2">The very first person to join becomes admin. After that, people need an invited email to enter.</p>
 
             <div class="mt-4 space-y-3">
-              <div class="bg-white rounded-2xl border border-slate-200 p-3">
+              <form id="inviteForm" class="bg-white rounded-2xl border border-slate-200 p-3">
                 <label class="block text-sm font-semibold mb-2">Invite email</label>
-                <div class="flex gap-2">
+                <div class="flex flex-col sm:flex-row gap-2">
                   <input id="inviteEmailInput" type="email" placeholder="friend@example.com" class="flex-1 rounded-xl border border-slate-300 px-3 py-2 outline-none focus:ring-2 focus:ring-slate-900" />
-                  <button id="inviteEmailBtn" class="bg-slate-900 text-white rounded-xl px-4 py-2 font-medium hover:bg-slate-800 transition">Invite</button>
+                  <button id="inviteEmailBtn" type="submit" class="bg-slate-900 text-white rounded-xl px-4 py-2 font-medium hover:bg-slate-800 transition whitespace-nowrap">Send Invite</button>
                 </div>
+                <div class="text-[11px] text-slate-500 mt-2">Type the email and click <strong>Send Invite</strong> or press Enter.</div>
                 <div id="inviteStatus" class="text-xs text-slate-600 mt-2"></div>
-              </div>
+              </form>
 
               <button id="clearMessagesBtn" class="w-full bg-red-600 text-white rounded-xl px-4 py-2 font-medium hover:bg-red-700 transition">Delete All Messages</button>
             </div>
@@ -160,6 +161,7 @@
     const onlineNowCount = document.getElementById("onlineNowCount");
     const onlineUsersList = document.getElementById("onlineUsersList");
     const adminPanel = document.getElementById("adminPanel");
+    const inviteForm = document.getElementById("inviteForm");
     const inviteEmailInput = document.getElementById("inviteEmailInput");
     const inviteEmailBtn = document.getElementById("inviteEmailBtn");
     const inviteStatus = document.getElementById("inviteStatus");
@@ -572,7 +574,8 @@
       emailInput.value = "";
     });
 
-    inviteEmailBtn.addEventListener("click", () => {
+    inviteForm.addEventListener("submit", (e) => {
+      e.preventDefault();
       const result = inviteEmail(inviteEmailInput.value);
       inviteStatus.textContent = result;
       if (result === "Invite added.") {
